@@ -2,7 +2,7 @@
 
 Local website prototype for Aymen's interface task in the CMPT 310 AI Introduction project.
 
-The app lets a user enter a Metro Vancouver restaurant or cafe location, adjust generated feature values, and compare model-style outputs for expected Yelp rating, success classification, and review demand.
+The app lets a user enter a Metro Vancouver restaurant or cafe location, adjust generated feature values, and view the two current model outputs: expected Yelp rating and success/non-success classification.
 
 The current visual direction is inspired by Wealthsimple Predict for styling only: dark hero area, muted neutral/sage palette, large rounded typography, soft motion, guided workflow tabs, and polished summary cards adapted to restaurant-location decisions.
 
@@ -19,7 +19,7 @@ Open `http://localhost:3000/`.
 
 Reference repository: `https://github.com/preethi-ca/CMPT310_Project`
 
-The current version uses a browser-side model adapter generated from the reference repo CSVs. It ports the KNN feature-engineering path from `project_helper.py` and `knn_classification.py`, bundles 1,535 classification/rating rows, and uses 550 `location-information.csv` rows for review-demand estimates.
+The current version uses a browser-side model adapter generated from the reference repo CSVs. It ports the KNN feature-engineering path from `project_helper.py` and `knn_classification.py`, bundles 1,535 classification/rating rows, and predicts from `target_rating` and `target_is_successful`. The `location-information.csv` category labels are used only to keep the category dropdown aligned with the project dataset, not as a visible review-demand output.
 
 The reference repo currently contains training scripts, CSVs, and charts, but no exported `.pkl`, `.joblib`, `.json`, or API-ready trained model files. When the team exports trained Ridge/KNN/XGBoost/Decision Tree artifacts, the interface can replace the local adapter with a server/API route that loads those artifacts.
 
@@ -39,6 +39,5 @@ This app can be deployed as a static/reactive site because prediction currently 
 - Address, city, category, price, demographic, competition, and transit inputs
 - Real OpenStreetMap/Leaflet map with clickable Metro Vancouver example locations
 - Generated feature summary matching the project columns
-- Data-backed outputs for expected rating, success probability, and review demand
-- Model comparison section for Ridge regression, KNN/XGBoost, and Decision Tree
-- Repository chart assets for regression and KNN results
+- Data-backed outputs for expected Yelp rating and success/non-success classification
+- A clear generated-feature table labeled as model inputs, not extra outputs

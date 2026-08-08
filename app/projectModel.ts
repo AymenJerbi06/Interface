@@ -3,7 +3,6 @@ import {
   projectModelMetadata,
   reviewDemandArtifact,
   type KNNTrainingRow,
-  type ReviewDemandRow,
 } from "./model-data/projectModelRows";
 
 export type ProjectModelInput = {
@@ -20,47 +19,18 @@ export type ProjectModelInput = {
 };
 
 export type ProjectModelResult = {
-  age: number;
-  competition: number;
-  density: number;
-  featureReadiness: number;
-  income: number;
-  knnProbability: number;
   rating: number;
   ratingPercent: number;
-  reviewDemand: number;
-  successProbability: number;
-  transit: number;
-  verdict: "Promising" | "Worth testing" | "Needs caution";
-  xgbProbability: number;
+  successClassification: "Successful" | "Not successful";
 };
 
 export { projectModelMetadata };
+export const projectCategoryLabels = reviewDemandArtifact.categoryLabels;
 
 const KNN_NEIGHBORS = 35;
-const REVIEW_NEIGHBORS = 32;
-
-const categoryFamilies: string[][] = [
-  ["Cafes", "Coffee & Tea", "Coffee Roasteries", "Themed Cafes"],
-  ["Japanese", "Sushi Bars", "Ramen"],
-  ["Chinese", "Dim Sum", "Cantonese", "Hong Kong Style Cafe", "Taiwanese"],
-  ["Canadian (New)", "Comfort Food", "Bistros", "Pubs", "Gastropubs"],
-  ["Vietnamese", "Thai", "Malaysian", "Singaporean", "Filipino"],
-  ["Indian", "Pakistani", "Himalayan/Nepalese"],
-  ["Desserts", "Bakeries", "Patisserie/Cake Shop", "Waffles"],
-  ["Pizza", "Italian"],
-  ["Korean", "Barbeque"],
-  ["Seafood", "Fish & Chips"],
-  ["Breakfast & Brunch", "Diners"],
-  ["Burgers", "Fast Food", "Hot Dogs", "Donairs"],
-];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
-}
-
-function normalize(value: number, min: number, max: number) {
-  return clamp((value - min) / (max - min), 0, 1);
 }
 
 function safePositive(value: number, fallback: number) {
@@ -134,81 +104,6 @@ function weightedAverage<T>(
   return weightTotal > 0 ? weightedTotal / weightTotal : 0;
 }
 
-function categoryDistance(inputCategory: string, rowCategory: string) {
-  if (inputCategory === rowCategory) {
-    return 0;
-  }
-
-  const inputFamily = categoryFamilies.find((family) => family.includes(inputCategory));
-  if (inputFamily?.includes(rowCategory)) {
-    return 0.35;
-  }
-
-  return 1;
-}
-
-function reviewDistance(input: ProjectModelInput, row: ReviewDemandRow) {
-  const [city, category, priceLevel, latitude, longitude] = row;
-  const latDistance = (input.latitude - latitude) / 0.035;
-  const lngDistance = (input.longitude - longitude) / 0.045;
-  const priceDistance = Math.abs(input.priceLevel - priceLevel) * 0.35;
-  const cityDistance = city === input.city ? 0 : 0.9;
-  const categoryPenalty = categoryDistance(input.category, category) * 0.75;
-
-  return Math.sqrt(
-    latDistance ** 2 +
-      lngDistance ** 2 +
-      priceDistance ** 2 +
-      cityDistance ** 2 +
-      categoryPenalty ** 2,
-  );
-}
-
-function predictReviewDemand(input: ProjectModelInput) {
-  const nearest = reviewDemandArtifact.rows
-    .map((row) => ({ row, distance: reviewDistance(input, row) }))
-    .sort((left, right) => left.distance - right.distance)
-    .slice(0, REVIEW_NEIGHBORS);
-
-  const logReviewCount = weightedAverage(
-    nearest,
-    (item) => 1 / (item.distance + 0.22) ** 2,
-    (item) => item.row[5],
-  );
-
-  return Math.round(clamp(Math.expm1(logReviewCount), 5, 2800));
-}
-
-function rangeReadiness(value: number, min: number, max: number) {
-  if (value >= min && value <= max) {
-    return 1;
-  }
-
-  const span = Math.max(max - min, 1);
-  const distance = value < min ? min - value : value - max;
-  return clamp(1 - distance / span, 0, 1);
-}
-
-function calculateFeatureReadiness(input: ProjectModelInput) {
-  const ranges = knnModelArtifact.numericRanges;
-  const categoryKnown = reviewDemandArtifact.categoryLabels.includes(input.category) ? 1 : 0.72;
-  const cityKnown = knnModelArtifact.cityLabels.includes(input.city) ? 1 : 0.65;
-  const priceKnown = input.priceLevel >= 1 && input.priceLevel <= 4 ? 1 : 0.4;
-
-  const numericScores = [
-    rangeReadiness(input.medianIncome, ...ranges.median_income),
-    rangeReadiness(input.popDensity, ...ranges.pop_density_sqkm),
-    rangeReadiness(input.competitorCount, ...ranges.competitor_count_500m),
-    rangeReadiness(input.transitDistance, ...ranges.nearest_transit_distance_m),
-  ];
-
-  const average =
-    [...numericScores, categoryKnown, cityKnown, priceKnown].reduce((total, value) => total + value, 0) /
-    (numericScores.length + 3);
-
-  return Math.round(average * 100);
-}
-
 export function predictLocation(input: ProjectModelInput): ProjectModelResult {
   const vector = transformInput(input);
   const nearest = nearestKnnRows(vector);
@@ -220,30 +115,10 @@ export function predictLocation(input: ProjectModelInput): ProjectModelResult {
     5,
   );
   const weightedSuccess = weightedAverage(nearest, weightFor, (item) => item.row[2]);
-  const successProbability = Math.round(clamp(weightedSuccess * 100, 1, 99));
-  const reviewDemand = predictReviewDemand(input);
-  const featureReadiness = calculateFeatureReadiness(input);
-
-  const verdict =
-    successProbability >= 72
-      ? "Promising"
-      : successProbability >= 55
-        ? "Worth testing"
-        : "Needs caution";
 
   return {
-    age: normalize(input.ageShare, 10, 55),
-    competition: normalize(input.competitorCount, 0, 71),
-    density: normalize(input.popDensity, 0, 26785.84),
-    featureReadiness,
-    income: normalize(input.medianIncome, 0, 57748.28),
-    knnProbability: successProbability,
     rating: Number(rating.toFixed(2)),
     ratingPercent: Math.round((rating / 5) * 100),
-    reviewDemand,
-    successProbability,
-    transit: 1 - normalize(input.transitDistance, 1.27, 1563.44),
-    verdict,
-    xgbProbability: successProbability,
+    successClassification: clamp(weightedSuccess, 0, 1) >= 0.5 ? "Successful" : "Not successful",
   };
 }

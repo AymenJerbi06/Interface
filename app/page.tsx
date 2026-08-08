@@ -5,12 +5,10 @@ import {
   BarChart3,
   ChevronRight,
   Menu,
-  Pause,
-  Play,
   Search,
 } from "lucide-react";
 import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
-import { predictLocation, projectModelMetadata } from "./projectModel";
+import { predictLocation, projectCategoryLabels, projectModelMetadata } from "./projectModel";
 
 type CityName =
   | "Vancouver"
@@ -20,9 +18,7 @@ type CityName =
   | "New Westminster"
   | "Coquitlam";
 
-type AreaType = "Campus" | "Downtown" | "Mall" | "Transit" | "Suburban";
 type GuideKey = "Explore" | "Features" | "Results";
-type GuardrailKey = "inputs" | "models" | "limits";
 
 type LocationInput = {
   address: string;
@@ -40,7 +36,6 @@ type LocationInput = {
 
 type Preset = LocationInput & {
   label: string;
-  areaType: AreaType;
 };
 
 const cityDefaults: Record<
@@ -91,27 +86,11 @@ const cityDefaults: Record<
   },
 };
 
-const categories = [
-  "Cafes",
-  "Japanese",
-  "Chinese",
-  "Canadian (New)",
-  "Vietnamese",
-  "Sushi Bars",
-  "Pizza",
-  "Korean",
-  "Seafood",
-  "Indian",
-  "Breakfast & Brunch",
-  "Coffee & Tea",
-  "Desserts",
-  "Burgers",
-  "Thai",
-];
+const categories = projectCategoryLabels;
 
 const presets: Preset[] = [
   {
-    label: "Downtown Vancouver cafe",
+    label: "Vancouver cafe",
     address: "Robson St, Vancouver, BC",
     city: "Vancouver",
     category: "Cafes",
@@ -123,10 +102,9 @@ const presets: Preset[] = [
     ageShare: 33.1,
     competitorCount: 19,
     transitDistance: 180,
-    areaType: "Downtown",
   },
   {
-    label: "Metrotown sushi bar",
+    label: "Burnaby sushi bar",
     address: "Kingsway, Burnaby, BC",
     city: "Burnaby",
     category: "Sushi Bars",
@@ -138,7 +116,6 @@ const presets: Preset[] = [
     ageShare: 39.4,
     competitorCount: 16,
     transitDistance: 240,
-    areaType: "Mall",
   },
   {
     label: "Richmond Chinese restaurant",
@@ -153,10 +130,9 @@ const presets: Preset[] = [
     ageShare: 49.5,
     competitorCount: 13,
     transitDistance: 320,
-    areaType: "Transit",
   },
   {
-    label: "Surrey family restaurant",
+    label: "Surrey Indian restaurant",
     address: "King George Blvd, Surrey, BC",
     city: "Surrey",
     category: "Indian",
@@ -168,7 +144,6 @@ const presets: Preset[] = [
     ageShare: 31.8,
     competitorCount: 8,
     transitDistance: 460,
-    areaType: "Suburban",
   },
   {
     label: "Coquitlam coffee shop",
@@ -183,7 +158,6 @@ const presets: Preset[] = [
     ageShare: 27.8,
     competitorCount: 6,
     transitDistance: 520,
-    areaType: "Campus",
   },
   {
     label: "New West brunch spot",
@@ -198,14 +172,13 @@ const presets: Preset[] = [
     ageShare: 35.2,
     competitorCount: 10,
     transitDistance: 260,
-    areaType: "Transit",
   },
 ];
 
 const guideContent: Record<GuideKey, { title: string; text: string; stat: string }> = {
   Explore: {
     title: "Choose a restaurant or cafe location",
-    text: "Start from a real Metro Vancouver example, type an address, or click the map to set a custom point.",
+    text: "Type an address, choose the city and category, or click the map to set a custom point.",
     stat: "6 cities",
   },
   Features: {
@@ -214,88 +187,11 @@ const guideContent: Record<GuideKey, { title: string; text: string; stat: string
     stat: "8 feature groups",
   },
   Results: {
-    title: "Read model outputs together",
-    text: "Expected rating, success probability, review demand, and feature readiness are presented in one place.",
-    stat: "4 outputs",
+    title: "Read the two model outputs",
+    text: "The interface shows expected Yelp rating and success classification from the current data-backed adapter.",
+    stat: "2 outputs",
   },
 };
-
-const guardrails: Array<{
-  key: GuardrailKey;
-  title: string;
-  text: string;
-}> = [
-  {
-    key: "inputs",
-    title: "Built from the project plan",
-    text: "The UI stays focused on Aymen's task: entering/selecting a location, preparing features, and showing model output.",
-  },
-  {
-    key: "models",
-    title: "Compare the model families",
-    text: "Regression, classification, and review-demand outputs are separated so the user can understand what each model is answering.",
-  },
-  {
-    key: "limits",
-    title: "Clear about prototype limits",
-    text: "The current score is a browser-side prototype until the team exports trained model files or a prediction API.",
-  },
-];
-
-const modelRows = [
-  {
-    label: "Primary answer",
-    ridge: "Expected Yelp rating",
-    classification: "Successful or not",
-    demand: "Estimated review demand",
-  },
-  {
-    label: "Target column",
-    ridge: "target_rating",
-    classification: "target_is_successful",
-    demand: "log(1 + review_count)",
-  },
-  {
-    label: "Useful input",
-    ridge: "City, category, price, income",
-    classification: "Competition, transit, density",
-    demand: "Location, category, price",
-  },
-  {
-    label: "Displayed as",
-    ridge: "Rating out of 5.0",
-    classification: "Success probability",
-    demand: "Estimated reviews",
-  },
-];
-
-const chartAssets = [
-  {
-    src: "/model-assets/r2_vs_lambda.png",
-    title: "Ridge R2 by lambda",
-    alt: "Line chart showing Ridge regression R squared across lambda values.",
-  },
-  {
-    src: "/model-assets/rmse_vs_lambda.png",
-    title: "Ridge RMSE by lambda",
-    alt: "Line chart showing Ridge regression RMSE across lambda values.",
-  },
-  {
-    src: "/model-assets/mae_vs_lambda.png",
-    title: "Ridge MAE by lambda",
-    alt: "Line chart showing Ridge regression MAE across lambda values.",
-  },
-  {
-    src: "/model-assets/knn_performance_vs_k.png",
-    title: "KNN performance by k",
-    alt: "KNN performance chart across different k values.",
-  },
-  {
-    src: "/model-assets/knn_confusion_matrix.png",
-    title: "KNN confusion matrix",
-    alt: "KNN confusion matrix heatmap.",
-  },
-];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -329,6 +225,7 @@ function MapPicker({
   onMapSelect: (latitude: number, longitude: number) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const initialMarkerRef = useRef({ latitude: input.latitude, longitude: input.longitude });
   const mapRef = useRef<LeafletMap | null>(null);
   const selectedMarkerRef = useRef<LeafletMarker | null>(null);
 
@@ -382,7 +279,7 @@ function MapPicker({
           .on("click", () => onPresetSelect(preset));
       });
 
-      selectedMarkerRef.current = L.marker([input.latitude, input.longitude], {
+      selectedMarkerRef.current = L.marker([initialMarkerRef.current.latitude, initialMarkerRef.current.longitude], {
         icon: selectedIcon,
         zIndexOffset: 1000,
       }).addTo(map);
@@ -426,90 +323,16 @@ function MapPicker({
 
 export default function Home() {
   const [input, setInput] = useState<LocationInput>(presets[0]);
-  const [selectedPreset, setSelectedPreset] = useState(presets[0].label);
   const [runState, setRunState] = useState("Ready for input");
   const [activeGuide, setActiveGuide] = useState<GuideKey>("Explore");
-  const [activeGuardrail, setActiveGuardrail] = useState<GuardrailKey>("inputs");
-  const [tickerPaused, setTickerPaused] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const result = useMemo(() => predictLocation(input), [input]);
   const currentGuide = guideContent[activeGuide];
-  const activePreset = presets.find((preset) => preset.label === selectedPreset);
-
-  const signalTape = useMemo(
-    () => [
-      {
-        label: "Success probability",
-        context: input.city,
-        value: `${result.successProbability}%`,
-        detail: result.verdict,
-      },
-      {
-        label: "Expected Yelp rating",
-        context: input.category,
-        value: result.rating.toFixed(2),
-        detail: "out of 5.0",
-      },
-      {
-        label: "Predicted review demand",
-        context: "Demand",
-        value: `${result.reviewDemand}`,
-        detail: "estimated reviews",
-      },
-      {
-        label: "Nearest transit distance",
-        context: "Access",
-        value: `${input.transitDistance}m`,
-        detail: "from location",
-      },
-      {
-        label: "Competitors in 500m",
-        context: "Competition",
-        value: `${input.competitorCount}`,
-        detail: "nearby businesses",
-      },
-    ],
-    [
-      input.category,
-      input.city,
-      input.competitorCount,
-      input.transitDistance,
-      result.rating,
-      result.reviewDemand,
-      result.successProbability,
-      result.verdict,
-    ],
-  );
-
-  useEffect(() => {
-    const section = document.querySelector<HTMLElement>(".guardrail-section");
-    if (!section) {
-      return;
-    }
-
-    const updateGuardrail = () => {
-      const rect = section.getBoundingClientRect();
-      const scrollableDistance = Math.max(rect.height - window.innerHeight, 1);
-      const progress = clamp((0 - rect.top) / scrollableDistance, 0, 0.999);
-      const index = Math.min(guardrails.length - 1, Math.floor(progress * guardrails.length));
-      setActiveGuardrail(guardrails[index].key);
-    };
-
-    updateGuardrail();
-    window.addEventListener("scroll", updateGuardrail, { passive: true });
-    window.addEventListener("resize", updateGuardrail);
-
-    return () => {
-      window.removeEventListener("scroll", updateGuardrail);
-      window.removeEventListener("resize", updateGuardrail);
-    };
-  }, []);
 
   const applyPreset = useCallback((preset: Preset) => {
     setInput({ ...preset });
-    setSelectedPreset(preset.label);
-    setRunState("Preset loaded");
+    setRunState("Example loaded");
   }, []);
 
   const applyMapPoint = useCallback((latitude: number, longitude: number) => {
@@ -527,7 +350,6 @@ export default function Home() {
       competitorCount: clamp(Math.round(nearest.competitorCount + mapDistance * 90), 0, 35),
       transitDistance: clamp(Math.round(nearest.transitDistance + mapDistance * 1800), 80, 1400),
     }));
-    setSelectedPreset("Custom map point");
     setRunState("Map point selected");
   }, []);
 
@@ -536,7 +358,6 @@ export default function Home() {
       ...current,
       [field]: Number(value),
     }));
-    setSelectedPreset("Custom location");
     setRunState("Edited");
   }
 
@@ -548,7 +369,6 @@ export default function Home() {
       city,
       address: `${city}, BC`,
     }));
-    setSelectedPreset("Custom location");
     setRunState("Edited");
   }
 
@@ -584,8 +404,8 @@ export default function Home() {
             <a className="nav-pill" href="#map">
               Open interface
             </a>
-            <a className="nav-pill primary" href="#models">
-              View models
+            <a className="nav-pill primary" href="#results">
+              View output
             </a>
             <button
               className="icon-button"
@@ -606,12 +426,6 @@ export default function Home() {
               <a href="#results" onClick={() => setMenuOpen(false)}>
                 Results
               </a>
-              <a href="#models" onClick={() => setMenuOpen(false)}>
-                Model comparison
-              </a>
-              <a href="#visuals" onClick={() => setMenuOpen(false)}>
-                Visuals
-              </a>
             </div>
           ) : null}
         </header>
@@ -624,49 +438,26 @@ export default function Home() {
             </p>
             <h1 id="hero-title">Predict restaurant location success.</h1>
             <p>
-              Select a Metro Vancouver restaurant or cafe location, generate project features, and compare the
-              model outputs in one interactive interface.
+              Select a Metro Vancouver restaurant or cafe location and view the current expected Yelp rating and
+              success classification from the project data.
             </p>
             <div className="hero-actions">
               <a className="store-pill" href="#map">
                 <span>Start with</span>
                 Map input
               </a>
-              <a className="store-pill" href="#models">
+              <a className="store-pill" href="#results">
                 <span>Review</span>
-                Model logic
+                Model output
               </a>
             </div>
           </div>
-
         </div>
-
-        <div className={tickerPaused ? "signal-ticker paused" : "signal-ticker"} aria-label="Model signal ticker">
-          {[...signalTape, ...signalTape].map((item, index) => (
-            <article className="ticker-card" key={`${item.label}-${index}`}>
-              <span>{item.context}</span>
-              <p>{item.label}</p>
-              <div>
-                <strong>{item.value}</strong>
-                <em>{item.detail}</em>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        <button
-          className="floating-control"
-          type="button"
-          onClick={() => setTickerPaused((current) => !current)}
-          aria-label={tickerPaused ? "Resume ticker animation" : "Pause ticker animation"}
-        >
-          {tickerPaused ? <Play size={22} fill="currentColor" /> : <Pause size={22} fill="currentColor" />}
-        </button>
       </section>
 
       <section className="statement-section" aria-labelledby="statement-title">
         <h2 id="statement-title">
-          Have a restaurant idea in Metro Vancouver? Turn it into a model-backed location forecast.
+          Have a restaurant idea in Metro Vancouver? Estimate its Yelp rating and success class from the project data.
         </h2>
       </section>
 
@@ -697,7 +488,7 @@ export default function Home() {
             </div>
             <MapPicker input={input} onPresetSelect={applyPreset} onMapSelect={applyMapPoint} />
             <div className="phone-bottomline">
-              <span>{activePreset?.areaType ?? "Custom"}</span>
+              <span>{input.city}</span>
               <strong>{input.address}</strong>
             </div>
           </section>
@@ -719,7 +510,6 @@ export default function Home() {
                 {runState}
               </small>
             </div>
-            <strong>{selectedPreset}</strong>
           </div>
 
           <label className="field wide-field" htmlFor="location-address">
@@ -729,26 +519,11 @@ export default function Home() {
               value={input.address}
               onChange={(event) => {
                 setInput((current) => ({ ...current, address: event.target.value }));
-                setSelectedPreset("Custom location");
                 setRunState("Edited");
               }}
               placeholder="Example: Robson St, Vancouver, BC"
             />
           </label>
-
-          <div className="preset-row" aria-label="Example locations">
-            {presets.map((preset) => (
-              <button
-                className={preset.label === selectedPreset ? "preset-button active" : "preset-button"}
-                key={preset.label}
-                onClick={() => applyPreset(preset)}
-                type="button"
-              >
-                <span>{preset.areaType}</span>
-                {preset.city}
-              </button>
-            ))}
-          </div>
 
           <div className="field-grid">
             <label className="field">
@@ -766,7 +541,6 @@ export default function Home() {
                 value={input.category}
                 onChange={(event) => {
                   setInput((current) => ({ ...current, category: event.target.value }));
-                  setSelectedPreset("Custom location");
                   setRunState("Edited");
                 }}
               >
@@ -855,10 +629,12 @@ export default function Home() {
         <div className="results-board">
           <div className="board-heading">
             <span>Model output</span>
-            <h2 id="results-title">{result.verdict} location signal</h2>
+            <h2 id="results-title">Location model results</h2>
             <p className="model-source">
-              Powered by {formatNumber(projectModelMetadata.classificationTrainingRows)} GitHub training rows and{" "}
-              {formatNumber(projectModelMetadata.reviewTrainingRows)} review-demand rows.
+              Current live outputs use a browser-side KNN-style nearest-neighbor adapter built from{" "}
+              {formatNumber(projectModelMetadata.classificationTrainingRows)} project training rows. The expected Yelp
+              rating is estimated from <code>target_rating</code>; success classification uses{" "}
+              <code>target_is_successful</code>. Exported Python model files are not connected yet.
             </p>
           </div>
 
@@ -866,30 +642,22 @@ export default function Home() {
             <article className="metric-card highlight">
               <span>Expected Yelp rating</span>
               <strong>{result.rating.toFixed(2)} / 5.0</strong>
+              <small>KNN-style estimate from similar rows</small>
               <div className="bar" aria-label={`Expected rating ${result.rating.toFixed(2)} out of 5`}>
                 <span style={{ width: `${result.ratingPercent}%` }} />
               </div>
             </article>
 
-            <article className="metric-card">
-              <span>Success probability</span>
-              <strong>{result.successProbability}%</strong>
-              <div className="bar" aria-label={`Success probability ${result.successProbability} percent`}>
-                <span style={{ width: `${result.successProbability}%` }} />
-              </div>
+            <article className="metric-card classification">
+              <span>Success classification</span>
+              <strong>{result.successClassification}</strong>
+              <small>Classification label from <code>target_is_successful</code></small>
             </article>
+          </div>
 
-            <article className="metric-card">
-              <span>Predicted review demand</span>
-              <strong>{result.reviewDemand}</strong>
-              <small>estimated reviews</small>
-            </article>
-
-            <article className="metric-card">
-              <span>Feature readiness</span>
-              <strong>{result.featureReadiness}%</strong>
-              <small>input completeness signal</small>
-            </article>
+          <div className="feature-table-heading">
+            <span>Generated input features</span>
+            <small>These values are model inputs, not extra model outputs.</small>
           </div>
 
           <div className="feature-table" aria-label="Generated features">
@@ -926,74 +694,6 @@ export default function Home() {
               <strong>{input.priceLevel}</strong>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className="guardrail-section" aria-labelledby="guardrail-title">
-        <div className="guardrail-sticky">
-          <h2 id="guardrail-title">
-            A model interface <span>that explains its signal</span>
-          </h2>
-          <div className="guardrail-copy">
-            {guardrails.map((item) => (
-              <article
-                className={activeGuardrail === item.key ? "guardrail-item active" : "guardrail-item"}
-                data-step={item.key}
-                key={item.key}
-              >
-                <h3>{item.title}</h3>
-                <p>{item.text}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="model-compare-section" id="models" aria-labelledby="models-title">
-        <h2 id="models-title">
-          How the project models stack up against each other
-        </h2>
-        <div className="model-table" role="table" aria-label="Model comparison">
-          <div className="table-row table-head" role="row">
-            <div role="columnheader" />
-            <div role="columnheader">Ridge regression</div>
-            <div className="featured-column" role="columnheader">
-              KNN and XGBoost
-            </div>
-            <div role="columnheader">Decision tree</div>
-          </div>
-
-          {modelRows.map((row) => (
-            <div className="table-row" role="row" key={row.label}>
-              <div role="cell">{row.label}</div>
-              <div role="cell">{row.ridge}</div>
-              <div className="featured-column" role="cell">
-                {row.classification}
-              </div>
-              <div role="cell">{row.demand}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="visual-section" id="visuals" aria-labelledby="visuals-title">
-        <div className="resource-heading">
-          <h2 id="visuals-title">Project visuals and model evidence</h2>
-          <p>
-            Charts from the GitHub repository, kept as supporting context for the interface.
-          </p>
-        </div>
-
-        <div className="resource-strip">
-          {chartAssets.map((chart) => (
-            <figure className="resource-card" key={chart.src}>
-              <img src={chart.src} alt={chart.alt} />
-              <figcaption>
-                <span>{chart.title}</span>
-                <a href={chart.src}>View chart</a>
-              </figcaption>
-            </figure>
-          ))}
         </div>
       </section>
 

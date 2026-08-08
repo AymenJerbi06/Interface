@@ -35,17 +35,24 @@ test("server-renders the CMPT 310 interface", async () => {
   assert.match(html, /Refresh prediction/);
   assert.match(html, /OpenStreetMap location selector/);
   assert.match(html, /Expected Yelp rating/);
-  assert.match(html, /Powered by[\s\S]*GitHub training rows/);
-  assert.match(html, /A model interface/);
-  assert.match(html, /that explains its signal/);
-  assert.match(html, /How the project models stack up against each other/);
-  assert.match(html, /Charts from the GitHub repository/);
+  assert.match(html, /Success classification/);
+  assert.match(html, /Location model results/);
+  assert.match(html, /browser-side KNN-style nearest-neighbor adapter/);
+  assert.match(html, /target_rating/);
+  assert.match(html, /target_is_successful/);
+  assert.match(html, /Generated input features/);
+  assert.match(html, /These values are model inputs, not extra model outputs/);
   assert.doesNotMatch(html, /Restaurant success markets|Location contract|Restaurant contract|Discover Trade Settle|prediction markets|market odds/i);
   assert.doesNotMatch(html, /Predicted restaurant performance for this location|Live estimate/i);
+  assert.doesNotMatch(html, /Predicted review demand|Feature readiness|Success probability/i);
+  assert.doesNotMatch(
+    html,
+    /\b(Downtown|Mall|Suburban|Campus)\b|Model comparison|Project visuals|Charts from the GitHub repository/i,
+  );
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 
-test("uses project assets, map package, and removes starter preview code", async () => {
+test("uses project data, map package, and removes non-output sections", async () => {
   const templateRoot = new URL("../", import.meta.url);
   const [page, model, modelRows, layout, packageJson, styles] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
@@ -56,15 +63,18 @@ test("uses project assets, map package, and removes starter preview code", async
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /model-assets\/knn_confusion_matrix\.png/);
   assert.match(page, /OpenStreetMap/);
   assert.match(page, /leaflet/);
   assert.match(page, /predictLocation/);
-  assert.match(page, /signal-ticker/);
-  assert.match(page, /guardrail-section/);
-  assert.match(page, /Ridge regression/);
+  assert.match(page, /projectCategoryLabels/);
+  assert.match(page, /target_is_successful/);
+  assert.doesNotMatch(page, /signal-ticker|guardrail-section|model-compare-section|visual-section/);
+  assert.doesNotMatch(page, /Predicted review demand|Feature readiness|Success probability|Ridge regression/);
+  assert.doesNotMatch(page, /model-assets\//);
   assert.match(model, /nearestKnnRows/);
   assert.match(model, /reviewDemandArtifact/);
+  assert.match(model, /projectCategoryLabels/);
+  assert.doesNotMatch(model, /predictReviewDemand|calculateFeatureReadiness/);
   assert.match(modelRows, /classificationTrainingRows": 1535/);
   assert.match(modelRows, /reviewTrainingRows": 550/);
   assert.match(modelRows, /CMPT310_Project/);
@@ -76,14 +86,6 @@ test("uses project assets, map package, and removes starter preview code", async
   assert.doesNotMatch(styles, /#f0c94a|240,\s*201,\s*74/i);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.doesNotMatch(page, /SkeletonPreview|_sites-preview/);
-
-  await Promise.all([
-    access(new URL("../public/model-assets/knn_confusion_matrix.png", import.meta.url)),
-    access(new URL("../public/model-assets/knn_performance_vs_k.png", import.meta.url)),
-    access(new URL("../public/model-assets/mae_vs_lambda.png", import.meta.url)),
-    access(new URL("../public/model-assets/r2_vs_lambda.png", import.meta.url)),
-    access(new URL("../public/model-assets/rmse_vs_lambda.png", import.meta.url)),
-  ]);
 
   await assert.rejects(access(new URL("app/_sites-preview", templateRoot)));
 });
