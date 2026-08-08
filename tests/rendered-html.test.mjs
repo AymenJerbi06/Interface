@@ -32,6 +32,7 @@ test("server-renders the CMPT 310 interface", async () => {
   assert.match(html, /<title>CMPT 310 Location AI<\/title>/i);
   assert.match(html, /Predict restaurant location success\./);
   assert.match(html, /CMPT 310 interface/);
+  assert.match(html, /Team project interface/);
   assert.match(html, /Refresh prediction/);
   assert.match(html, /OpenStreetMap location selector/);
   assert.match(html, /Expected Yelp rating/);
@@ -44,6 +45,7 @@ test("server-renders the CMPT 310 interface", async () => {
   assert.match(html, /These values are model inputs, not extra model outputs/);
   assert.doesNotMatch(html, /Restaurant success markets|Location contract|Restaurant contract|Discover Trade Settle|prediction markets|market odds/i);
   assert.doesNotMatch(html, /Predicted restaurant performance for this location|Live estimate/i);
+  assert.doesNotMatch(html, /Aymen|interface task|interface milestone/i);
   assert.doesNotMatch(html, /Predicted review demand|Feature readiness|Success probability/i);
   assert.doesNotMatch(
     html,
@@ -54,13 +56,14 @@ test("server-renders the CMPT 310 interface", async () => {
 
 test("uses project data, map package, and removes non-output sections", async () => {
   const templateRoot = new URL("../", import.meta.url);
-  const [page, model, modelRows, layout, packageJson, styles] = await Promise.all([
+  const [page, model, modelRows, layout, packageJson, styles, readme] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/projectModel.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/model-data/projectModelRows.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../README.md", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /OpenStreetMap/);
@@ -83,6 +86,11 @@ test("uses project data, map package, and removes non-output sections", async ()
   assert.match(packageJson, /"lucide-react"/);
   assert.match(styles, /#32302f/);
   assert.match(styles, /#b9c7a8/);
+  assert.match(styles, /@keyframes panel-rise/);
+  assert.match(styles, /@keyframes phone-scan/);
+  assert.match(styles, /@keyframes tab-progress/);
+  assert.match(styles, /@keyframes bar-shimmer/);
+  assert.doesNotMatch(page + "\n" + styles + "\n" + readme, /Aymen|interface task|interface milestone/i);
   assert.doesNotMatch(styles, /#f0c94a|240,\s*201,\s*74/i);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.doesNotMatch(page, /SkeletonPreview|_sites-preview/);

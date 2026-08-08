@@ -1,6 +1,6 @@
 # CMPT 310 Location AI Interface
 
-Local website prototype for Aymen's interface task in the CMPT 310 AI Introduction project.
+Team website prototype for the CMPT 310 AI Introduction project interface.
 
 The app lets a user enter a Metro Vancouver restaurant or cafe location, adjust generated feature values, and view the two current model outputs: expected Yelp rating and success/non-success classification.
 

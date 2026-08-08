@@ -708,7 +708,7 @@ export default function Home() {
           <span className="brand-word">LocationAI</span>
         </a>
         <p>CMPT 310 - D200 Introduction to Artificial Intelligence</p>
-        <strong>Aymen&apos;s interface milestone</strong>
+        <strong>Team project interface</strong>
       </footer>
     </main>
   );
