@@ -51,6 +51,9 @@ test("server-renders the CMPT 310 interface", async () => {
   assert.match(html, /yelp-and-demo-info\.csv/);
   assert.match(html, /target_rating/);
   assert.match(html, /target_is_successful/);
+  assert.match(html, /The location source includes/);
+  assert.match(html, /competitor_count_500m/);
+  assert.match(html, /nearest_transit_distance_m/);
   assert.match(html, /Generated input features/);
   assert.match(html, /Feature usage is model-specific/);
   assert.doesNotMatch(html, /Refresh prediction|Refresh and read outputs|Start with|Open interface|View output/i);
