@@ -1,10 +1,21 @@
 import {
+  boostedSuccessArtifact,
+  decisionTreeRatingArtifact,
   knnModelArtifact,
   projectModelMetadata,
   ridgeRatingArtifact,
   reviewDemandArtifact,
   type KNNTrainingRow,
+  type TreeNode,
 } from "./model-data/projectModelRows";
+
+export type RatingModelId = "linearRegression" | "decisionTree";
+export type SuccessModelId = "knn" | "xgBoost";
+
+export type ProjectModelOptions = {
+  ratingModel: RatingModelId;
+  successModel: SuccessModelId;
+};
 
 export type ProjectModelInput = {
   city: string;
@@ -23,10 +34,24 @@ export type ProjectModelResult = {
   rating: number;
   ratingPercent: number;
   successClassification: "Successful" | "Not successful";
+  ratingModelLabel: string;
+  successModelLabel: string;
 };
 
 export { projectModelMetadata };
 export const projectCategoryLabels = reviewDemandArtifact.categoryLabels;
+export const defaultModelOptions: ProjectModelOptions = {
+  ratingModel: "linearRegression",
+  successModel: "knn",
+};
+export const ratingModelOptions: Array<{ id: RatingModelId; label: string }> = [
+  { id: "linearRegression", label: "Linear/Ridge regression" },
+  { id: "decisionTree", label: "Decision tree regression" },
+];
+export const successModelOptions: Array<{ id: SuccessModelId; label: string }> = [
+  { id: "knn", label: "KNN classifier" },
+  { id: "xgBoost", label: "XGBoost classifier" },
+];
 
 const KNN_NEIGHBORS = 35;
 
@@ -96,6 +121,22 @@ function nearestKnnRows(vector: number[]) {
     .slice(0, KNN_NEIGHBORS);
 }
 
+function predictTree(nodes: readonly TreeNode[], vector: readonly number[]) {
+  let nodeIndex = 0;
+
+  while (true) {
+    const node = nodes[nodeIndex];
+    if (node.featureIndex === undefined || node.left === undefined || node.right === undefined) {
+      return node.value;
+    }
+    nodeIndex = vector[node.featureIndex] <= (node.threshold ?? 0) ? node.left : node.right;
+  }
+}
+
+function sigmoid(value: number) {
+  return 1 / (1 + Math.exp(-value));
+}
+
 function ratingNumericValue(input: ProjectModelInput, featureName: string) {
   if (featureName === "median_income") {
     return safePositive(input.medianIncome, ridgeRatingArtifact.numericStats["median_income"].mean);
@@ -128,7 +169,7 @@ function ratingCategoricalValue(input: ProjectModelInput, featureName: string) {
   return "";
 }
 
-function predictRating(input: ProjectModelInput) {
+function predictLinearRegressionRating(input: ProjectModelInput) {
   const numericValues = ridgeRatingArtifact.numericFeatures.map((featureName) => {
     const stats = ridgeRatingArtifact.numericStats[featureName];
     return (ratingNumericValue(input, featureName) - stats.mean) / stats.std;
@@ -144,6 +185,78 @@ function predictRating(input: ProjectModelInput) {
     (total, value, index) => total + value * ridgeRatingArtifact.coefficients[index],
     ridgeRatingArtifact.intercept,
   );
+}
+
+function decisionTreeNumericValue(input: ProjectModelInput, featureName: string) {
+  if (featureName === "latitude") {
+    return Number.isFinite(input.latitude) ? input.latitude : decisionTreeRatingArtifact.numericImputeValues[featureName];
+  }
+
+  if (featureName === "longitude") {
+    return Number.isFinite(input.longitude)
+      ? input.longitude
+      : decisionTreeRatingArtifact.numericImputeValues[featureName];
+  }
+
+  return decisionTreeRatingArtifact.numericImputeValues[featureName] ?? 0;
+}
+
+function decisionTreeCategoricalValue(input: ProjectModelInput, featureName: string) {
+  if (featureName === "city") {
+    return input.city || decisionTreeRatingArtifact.categoricalImputeValues[featureName];
+  }
+
+  if (featureName === "primary_category") {
+    return input.category || decisionTreeRatingArtifact.categoricalImputeValues[featureName];
+  }
+
+  return decisionTreeRatingArtifact.categoricalImputeValues[featureName] ?? "";
+}
+
+function predictDecisionTreeRating(input: ProjectModelInput) {
+  const numericValues = decisionTreeRatingArtifact.numericFeatures.map((featureName) =>
+    decisionTreeNumericValue(input, featureName),
+  );
+  const categoricalValues = decisionTreeRatingArtifact.categoricalFeatures.flatMap((featureName) => {
+    const currentValue = decisionTreeCategoricalValue(input, featureName);
+    return decisionTreeRatingArtifact.categoryValues[featureName].map((value) => (currentValue === value ? 1 : 0));
+  });
+
+  return predictTree(decisionTreeRatingArtifact.nodes, [...numericValues, ...categoricalValues]);
+}
+
+function predictRating(input: ProjectModelInput, ratingModel: RatingModelId) {
+  if (ratingModel === "decisionTree") {
+    return predictDecisionTreeRating(input);
+  }
+
+  return predictLinearRegressionRating(input);
+}
+
+function predictKnnSuccess(input: ProjectModelInput) {
+  const vector = transformClassifierInput(input);
+  const nearest = nearestKnnRows(vector);
+  const weightFor = (item: { row: KNNTrainingRow; distance: number }) => 1 / (item.distance + 0.24) ** 2;
+
+  return weightedAverage(nearest, weightFor, (item) => item.row[1]);
+}
+
+function predictBoostedSuccess(input: ProjectModelInput) {
+  const vector = transformClassifierInput(input);
+  const logit = boostedSuccessArtifact.trees.reduce(
+    (total, nodes) => total + boostedSuccessArtifact.learningRate * predictTree(nodes, vector),
+    boostedSuccessArtifact.baseLogit,
+  );
+
+  return sigmoid(logit);
+}
+
+function predictSuccess(input: ProjectModelInput, successModel: SuccessModelId) {
+  if (successModel === "xgBoost") {
+    return predictBoostedSuccess(input);
+  }
+
+  return predictKnnSuccess(input);
 }
 
 function weightedAverage<T>(
@@ -163,17 +276,20 @@ function weightedAverage<T>(
   return weightTotal > 0 ? weightedTotal / weightTotal : 0;
 }
 
-export function predictLocation(input: ProjectModelInput): ProjectModelResult {
-  const vector = transformClassifierInput(input);
-  const nearest = nearestKnnRows(vector);
-  const weightFor = (item: { row: KNNTrainingRow; distance: number }) => 1 / (item.distance + 0.24) ** 2;
-
-  const rating = clamp(predictRating(input), 0, 5);
-  const weightedSuccess = weightedAverage(nearest, weightFor, (item) => item.row[1]);
+export function predictLocation(
+  input: ProjectModelInput,
+  options: ProjectModelOptions = defaultModelOptions,
+): ProjectModelResult {
+  const rating = clamp(predictRating(input, options.ratingModel), 0, 5);
+  const weightedSuccess = predictSuccess(input, options.successModel);
+  const ratingOption = ratingModelOptions.find((model) => model.id === options.ratingModel) ?? ratingModelOptions[0];
+  const successOption = successModelOptions.find((model) => model.id === options.successModel) ?? successModelOptions[0];
 
   return {
     rating: Number(rating.toFixed(2)),
     ratingPercent: Math.round((rating / 5) * 100),
     successClassification: clamp(weightedSuccess, 0, 1) >= 0.5 ? "Successful" : "Not successful",
+    ratingModelLabel: ratingOption.label,
+    successModelLabel: successOption.label,
   };
 }

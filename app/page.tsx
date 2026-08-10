@@ -3,12 +3,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
-  ChevronRight,
   Menu,
   Search,
 } from "lucide-react";
 import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
-import { predictLocation, projectCategoryLabels, projectModelMetadata } from "./projectModel";
+import {
+  defaultModelOptions,
+  predictLocation,
+  projectCategoryLabels,
+  projectModelMetadata,
+  ratingModelOptions,
+  successModelOptions,
+  type RatingModelId,
+  type SuccessModelId,
+} from "./projectModel";
 
 type CityName =
   | "Vancouver"
@@ -179,14 +187,83 @@ const instructionSteps = [
     text: "Type an address, choose a city, or click one of the map markers.",
   },
   {
-    title: "Adjust the model inputs",
-    text: "Set the restaurant category, price level, demographics, competition, and transit values.",
+    title: "Choose the models",
+    text: "Pick the rating model and the success classification model.",
   },
   {
-    title: "Refresh and read outputs",
-    text: "Use the button to update the rating regression output and the success classifier output.",
+    title: "Adjust the inputs",
+    text: "Change the restaurant category, price, demographics, competition, and transit values.",
   },
 ];
+
+const featureUseByModel: Record<
+  string,
+  {
+    rating: RatingModelId[];
+    success: SuccessModelId[];
+  }
+> = {
+  city: {
+    rating: ["linearRegression", "decisionTree"],
+    success: [],
+  },
+  primary_category: {
+    rating: ["linearRegression", "decisionTree"],
+    success: [],
+  },
+  median_income: {
+    rating: ["linearRegression"],
+    success: ["knn", "xgBoost"],
+  },
+  latitude: {
+    rating: ["linearRegression", "decisionTree"],
+    success: [],
+  },
+  longitude: {
+    rating: ["linearRegression", "decisionTree"],
+    success: [],
+  },
+  pop_density_sqkm: {
+    rating: [],
+    success: ["knn", "xgBoost"],
+  },
+  pct_age_20_39: {
+    rating: [],
+    success: ["knn", "xgBoost"],
+  },
+  competitor_count_500m: {
+    rating: [],
+    success: ["knn", "xgBoost"],
+  },
+  nearest_transit_distance_m: {
+    rating: [],
+    success: ["knn", "xgBoost"],
+  },
+  price_level: {
+    rating: ["linearRegression"],
+    success: [],
+  },
+};
+
+function featureUsageLabel(feature: string, ratingModel: RatingModelId, successModel: SuccessModelId) {
+  const usage = featureUseByModel[feature];
+  const usesRating = usage?.rating.includes(ratingModel) ?? false;
+  const usesSuccess = usage?.success.includes(successModel) ?? false;
+
+  if (usesRating && usesSuccess) {
+    return "Both selected models";
+  }
+
+  if (usesRating) {
+    return "Selected rating model";
+  }
+
+  if (usesSuccess) {
+    return "Selected success model";
+  }
+
+  return "Not used by selected models";
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -319,63 +396,65 @@ function MapPicker({
 export default function Home() {
   const [input, setInput] = useState<LocationInput>(presets[0]);
   const [runState, setRunState] = useState("Ready for input");
+  const [ratingModel, setRatingModel] = useState<RatingModelId>(defaultModelOptions.ratingModel);
+  const [successModel, setSuccessModel] = useState<SuccessModelId>(defaultModelOptions.successModel);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const result = useMemo(() => predictLocation(input), [input]);
+  const result = useMemo(() => predictLocation(input, { ratingModel, successModel }), [input, ratingModel, successModel]);
   const featureRows = useMemo(
     () => [
       {
         label: "city",
         value: input.city,
-        usage: "Rating regression",
+        usage: featureUsageLabel("city", ratingModel, successModel),
       },
       {
         label: "primary_category",
         value: input.category,
-        usage: "Rating regression",
+        usage: featureUsageLabel("primary_category", ratingModel, successModel),
       },
       {
         label: "median_income",
         value: `$${formatNumber(input.medianIncome)}`,
-        usage: "Both models",
+        usage: featureUsageLabel("median_income", ratingModel, successModel),
       },
       {
         label: "latitude",
         value: input.latitude.toFixed(5),
-        usage: "Rating regression",
+        usage: featureUsageLabel("latitude", ratingModel, successModel),
       },
       {
         label: "longitude",
         value: input.longitude.toFixed(5),
-        usage: "Rating regression",
+        usage: featureUsageLabel("longitude", ratingModel, successModel),
       },
       {
         label: "pop_density_sqkm",
         value: formatNumber(input.popDensity),
-        usage: "Success classifier",
+        usage: featureUsageLabel("pop_density_sqkm", ratingModel, successModel),
       },
       {
         label: "pct_age_20_39",
         value: `${input.ageShare}%`,
-        usage: "Success classifier",
+        usage: featureUsageLabel("pct_age_20_39", ratingModel, successModel),
       },
       {
         label: "competitor_count_500m",
         value: String(input.competitorCount),
-        usage: "Success classifier",
+        usage: featureUsageLabel("competitor_count_500m", ratingModel, successModel),
       },
       {
         label: "nearest_transit_distance_m",
         value: String(input.transitDistance),
-        usage: "Success classifier",
+        usage: featureUsageLabel("nearest_transit_distance_m", ratingModel, successModel),
       },
       {
         label: "price_level",
         value: String(input.priceLevel),
-        usage: "Rating regression",
+        usage: featureUsageLabel("price_level", ratingModel, successModel),
       },
     ],
-    [input],
+    [input, ratingModel, successModel],
   );
 
   const applyPreset = useCallback((preset: Preset) => {
@@ -418,10 +497,6 @@ export default function Home() {
       address: `${city}, BC`,
     }));
     setRunState("Edited");
-  }
-
-  function runModels() {
-    setRunState("Predictions refreshed");
   }
 
   function focusLocationInput() {
@@ -486,8 +561,8 @@ export default function Home() {
             </p>
             <h1 id="hero-title">Predict restaurant location success.</h1>
             <p>
-              Select a Metro Vancouver restaurant or cafe location and view the current expected Yelp rating and
-              success classification from the project data.
+              Select a Metro Vancouver restaurant or cafe location, choose the project models, and view the expected
+              Yelp rating plus success classification.
             </p>
             <div className="hero-actions">
               <a className="store-pill" href="#map">
@@ -505,7 +580,7 @@ export default function Home() {
 
       <section className="statement-section" aria-labelledby="statement-title">
         <h2 id="statement-title">
-          Have a restaurant idea in Metro Vancouver? Estimate its Yelp rating and success class from the project data.
+          Estimate a location with Linear Regression, Decision Tree, KNN, or XGBoost.
         </h2>
       </section>
 
@@ -537,11 +612,11 @@ export default function Home() {
           </section>
 
           <article className="workflow-copy">
-            <span>2 outputs</span>
-            <h3>One form, two model paths</h3>
+            <span>4 model choices</span>
+            <h3>Choose the model pair</h3>
             <p>
-              The expected rating and success classification use different model feature sets. Changing an input can
-              affect one output without affecting the other.
+              Expected Yelp rating can use Linear/Ridge Regression or Decision Tree Regression. Success classification
+              can use KNN or XGBoost.
             </p>
           </article>
         </div>
@@ -572,6 +647,40 @@ export default function Home() {
           </label>
 
           <div className="field-grid">
+            <label className="field">
+              <span>Rating model</span>
+              <select
+                value={ratingModel}
+                onChange={(event) => {
+                  setRatingModel(event.target.value as RatingModelId);
+                  setRunState("Model changed");
+                }}
+              >
+                {ratingModelOptions.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Success model</span>
+              <select
+                value={successModel}
+                onChange={(event) => {
+                  setSuccessModel(event.target.value as SuccessModelId);
+                  setRunState("Model changed");
+                }}
+              >
+                {successModelOptions.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <label className="field">
               <span>City</span>
               <select value={input.city} onChange={(event) => updateCity(event.target.value as CityName)}>
@@ -666,10 +775,6 @@ export default function Home() {
             </label>
           </div>
 
-          <button className="primary-action" type="button" onClick={runModels}>
-            Refresh prediction
-            <ChevronRight size={18} />
-          </button>
         </div>
 
         <div className="results-board">
@@ -677,12 +782,9 @@ export default function Home() {
             <span>Model output</span>
             <h2 id="results-title">Location model results</h2>
             <p className="model-source">
-              Live output sources are separated by model. Expected Yelp rating uses a browser-side Ridge regression
-              replica trained on {formatNumber(projectModelMetadata.ratingTrainingRows)}{" "}
-              <code>location-information.csv</code> rows with <code>target_rating</code>. Success classification uses a
-              browser-side KNN classifier replica trained on{" "}
-              {formatNumber(projectModelMetadata.classificationTrainingRows)} <code>yelp-and-demo-info.csv</code> rows
-              with <code>target_is_successful</code>.
+              Rating models use <code>target_rating</code> from {formatNumber(projectModelMetadata.ratingTrainingRows)}{" "}
+              <code>location-information.csv</code> rows. Classifiers use <code>target_is_successful</code> from{" "}
+              {formatNumber(projectModelMetadata.classificationTrainingRows)} <code>yelp-and-demo-info.csv</code> rows.
             </p>
           </div>
 
@@ -690,7 +792,7 @@ export default function Home() {
             <article className="metric-card highlight">
               <span>Expected Yelp rating</span>
               <strong>{result.rating.toFixed(2)} / 5.0</strong>
-              <small>Ridge regression output from <code>target_rating</code></small>
+              <small>{result.ratingModelLabel} output from <code>target_rating</code></small>
               <div className="bar" aria-label={`Expected rating ${result.rating.toFixed(2)} out of 5`}>
                 <span style={{ width: `${result.ratingPercent}%` }} />
               </div>
@@ -699,7 +801,7 @@ export default function Home() {
             <article className="metric-card classification">
               <span>Success classification</span>
               <strong>{result.successClassification}</strong>
-              <small>Classification label from <code>target_is_successful</code></small>
+              <small>{result.successModelLabel} label from <code>target_is_successful</code></small>
             </article>
           </div>
 

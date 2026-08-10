@@ -777,41 +777,6 @@ main {
   transform: translateY(-1px);
 }
 
-.primary-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 54px;
-  margin-top: 18px;
-  border: 0;
-  border-radius: 1600px;
-  background: var(--ink);
-  color: var(--cream);
-  font-weight: 900;
-  transition:
-    background-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
-}
-
-.primary-action svg {
-  transition: transform 180ms ease;
-}
-
-.primary-action:hover,
-.primary-action:focus-visible {
-  background: #000;
-  outline: 3px solid rgba(185, 199, 168, 0.36);
-  transform: translateY(-2px);
-}
-
-.primary-action:hover svg,
-.primary-action:focus-visible svg {
-  transform: translateX(4px);
-}
-
 .board-heading {
   display: block;
 }
@@ -1334,8 +1299,6 @@ main {
   .results-board:hover,
   .metric-card:hover,
   .feature-table div:hover,
-  .primary-action:hover,
-  .primary-action:focus-visible,
   .field input:focus,
   .field select:focus {
     transform: none;
