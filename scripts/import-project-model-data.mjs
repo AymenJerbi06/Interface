@@ -107,12 +107,12 @@ function buildKnnArtifact(rows) {
     "pop_density_sqkm",
     "competitor_count_500m",
     "nearest_transit_distance_m",
+    "pct_age_20_39",
   ];
   const imputed = imputeRows(rows, numericColumns).filter((row) => {
-    return numberValue(row.target_rating) !== null && numberValue(row.target_is_successful) !== null;
+    return numberValue(row.target_is_successful) !== null;
   });
 
-  const cityLabels = [...new Set(imputed.map((row) => row.city).filter(Boolean))].sort();
   const engineeredFeatureNames = [
     "log_median_income",
     "log_pop_density_sqkm",
@@ -121,18 +121,23 @@ function buildKnnArtifact(rows) {
     "income_density_ratio",
     "competition_transit_ratio",
   ];
+  const modelFeatureNames = [...numericColumns, ...engineeredFeatureNames];
 
   const engineeredRows = imputed.map((row) => {
     const medianIncome = row.median_income;
     const popDensity = row.pop_density_sqkm;
     const competitorCount = row.competitor_count_500m;
     const transitDistance = row.nearest_transit_distance_m;
+    const ageShare = row.pct_age_20_39;
 
     return {
-      city: row.city,
-      targetRating: numberValue(row.target_rating),
       targetSuccessful: numberValue(row.target_is_successful),
       features: {
+        median_income: medianIncome,
+        pop_density_sqkm: popDensity,
+        competitor_count_500m: competitorCount,
+        nearest_transit_distance_m: transitDistance,
+        pct_age_20_39: ageShare,
         log_median_income: Math.log1p(medianIncome),
         log_pop_density_sqkm: Math.log1p(popDensity),
         log_competitor_count_500m: Math.log1p(competitorCount),
@@ -144,15 +149,14 @@ function buildKnnArtifact(rows) {
   });
 
   const featureStats = Object.fromEntries(
-    engineeredFeatureNames.map((name) => {
+    modelFeatureNames.map((name) => {
       const values = engineeredRows.map((row) => row.features[name]);
       return [name, { mean: mean(values), std: std(values) }];
     }),
   );
 
   const firstPass = engineeredRows.map((row) => [
-    ...cityLabels.map((city) => (row.city === city ? 1 : 0)),
-    ...engineeredFeatureNames.map((name) => {
+    ...modelFeatureNames.map((name) => {
       const stats = featureStats[name];
       return (row.features[name] - stats.mean) / stats.std;
     }),
@@ -167,7 +171,6 @@ function buildKnnArtifact(rows) {
     );
     return [
       vector,
-      quantize(row.targetRating, 2),
       row.targetSuccessful,
     ];
   });
@@ -180,8 +183,7 @@ function buildKnnArtifact(rows) {
   );
 
   return {
-    cityLabels,
-    engineeredFeatureNames,
+    modelFeatureNames,
     featureStats: Object.fromEntries(
       Object.entries(featureStats).map(([key, stats]) => [
         key,
@@ -195,6 +197,123 @@ function buildKnnArtifact(rows) {
     scalerMeans: scalerMeans.map((value) => quantize(value, 8)),
     scalerStds: scalerStds.map((value) => quantize(value, 8)),
     rows: rowsOut,
+  };
+}
+
+function solveLinearSystem(matrix, vector) {
+  const size = matrix.length;
+  const augmented = matrix.map((row, index) => [...row, vector[index]]);
+
+  for (let pivotIndex = 0; pivotIndex < size; pivotIndex += 1) {
+    let bestRow = pivotIndex;
+    for (let rowIndex = pivotIndex + 1; rowIndex < size; rowIndex += 1) {
+      if (Math.abs(augmented[rowIndex][pivotIndex]) > Math.abs(augmented[bestRow][pivotIndex])) {
+        bestRow = rowIndex;
+      }
+    }
+
+    if (bestRow !== pivotIndex) {
+      [augmented[pivotIndex], augmented[bestRow]] = [augmented[bestRow], augmented[pivotIndex]];
+    }
+
+    const pivot = augmented[pivotIndex][pivotIndex] || 1e-12;
+    for (let columnIndex = pivotIndex; columnIndex <= size; columnIndex += 1) {
+      augmented[pivotIndex][columnIndex] /= pivot;
+    }
+
+    for (let rowIndex = 0; rowIndex < size; rowIndex += 1) {
+      if (rowIndex === pivotIndex) {
+        continue;
+      }
+
+      const factor = augmented[rowIndex][pivotIndex];
+      for (let columnIndex = pivotIndex; columnIndex <= size; columnIndex += 1) {
+        augmented[rowIndex][columnIndex] -= factor * augmented[pivotIndex][columnIndex];
+      }
+    }
+  }
+
+  return augmented.map((row) => row[size]);
+}
+
+function fitRidge(rows, targets, alpha) {
+  const featureCount = rows[0].length;
+  const xtx = Array.from({ length: featureCount }, () => Array(featureCount).fill(0));
+  const xty = Array(featureCount).fill(0);
+
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex];
+    const target = targets[rowIndex];
+
+    for (let left = 0; left < featureCount; left += 1) {
+      xty[left] += row[left] * target;
+      for (let right = 0; right < featureCount; right += 1) {
+        xtx[left][right] += row[left] * row[right];
+      }
+    }
+  }
+
+  for (let index = 1; index < featureCount; index += 1) {
+    xtx[index][index] += alpha;
+  }
+
+  return solveLinearSystem(xtx, xty);
+}
+
+function buildRidgeRatingArtifact(rows) {
+  const alpha = 10.0;
+  const numericFeatures = ["median_income", "latitude", "longitude"];
+  const categoricalFeatures = ["city", "primary_category", "price_level"];
+
+  const usable = imputeRows(
+    rows.filter((row) => numberValue(row.target_rating) !== null),
+    numericFeatures,
+  );
+
+  const categoryValues = Object.fromEntries(
+    categoricalFeatures.map((feature) => [
+      feature,
+      [...new Set(usable.map((row) => String(row[feature] ?? "")).filter(Boolean))].sort(),
+    ]),
+  );
+
+  const numericStats = Object.fromEntries(
+    numericFeatures.map((feature) => {
+      const values = usable.map((row) => numberValue(row[feature]));
+      return [feature, { mean: mean(values), std: std(values) }];
+    }),
+  );
+
+  const featureRows = usable.map((row) => {
+    const numericValues = numericFeatures.map((feature) => {
+      const stats = numericStats[feature];
+      return (numberValue(row[feature]) - stats.mean) / stats.std;
+    });
+
+    const categoricalValues = categoricalFeatures.flatMap((feature) =>
+      categoryValues[feature].map((value) => (String(row[feature] ?? "") === value ? 1 : 0)),
+    );
+
+    return [1, ...numericValues, ...categoricalValues];
+  });
+
+  const targets = usable.map((row) => numberValue(row.target_rating));
+  const [intercept, ...coefficients] = fitRidge(featureRows, targets, alpha);
+
+  return {
+    alpha,
+    trainingRows: usable.length,
+    numericFeatures,
+    categoricalFeatures,
+    numericStats: Object.fromEntries(
+      Object.entries(numericStats).map(([key, stats]) => [
+        key,
+        { mean: quantize(stats.mean, 8), std: quantize(stats.std, 8) },
+      ]),
+    ),
+    categoryValues,
+    intercept: quantize(intercept, 10),
+    coefficients: coefficients.map((value) => quantize(value, 10)),
   };
 }
 
@@ -240,23 +359,26 @@ const [yelpText, locationText] = await Promise.all([
 const yelpRows = parseCsv(yelpText);
 const locationRows = parseCsv(locationText);
 const knn = buildKnnArtifact(yelpRows);
+const rating = buildRidgeRatingArtifact(locationRows);
 const reviews = buildReviewArtifact(locationRows);
 
 const output = `// Generated from https://github.com/preethi-ca/CMPT310_Project on ${new Date().toISOString()}.
 // Source files: yelp-and-demo-info.csv, location-information.csv.
 
-export type KNNTrainingRow = [number[], number, number];
+export type KNNTrainingRow = [number[], number];
 export type ReviewDemandRow = [string, string, number, number, number, number];
 
 export const projectModelMetadata: {
   sourceRepo: string;
   yelpRows: number;
+  ratingTrainingRows: number;
   classificationTrainingRows: number;
   reviewTrainingRows: number;
 } = ${JSON.stringify(
   {
     sourceRepo: "https://github.com/preethi-ca/CMPT310_Project",
     yelpRows: yelpRows.length,
+    ratingTrainingRows: rating.trainingRows,
     classificationTrainingRows: knn.rows.length,
     reviewTrainingRows: reviews.rows.length,
   },
@@ -265,8 +387,7 @@ export const projectModelMetadata: {
 )} ;
 
 export const knnModelArtifact: {
-  cityLabels: string[];
-  engineeredFeatureNames: string[];
+  modelFeatureNames: string[];
   featureStats: Record<string, { mean: number; std: number }>;
   imputeValues: Record<string, number>;
   numericRanges: Record<string, [number, number]>;
@@ -274,6 +395,17 @@ export const knnModelArtifact: {
   scalerStds: number[];
   rows: KNNTrainingRow[];
 } = ${JSON.stringify(knn)};
+
+export const ridgeRatingArtifact: {
+  alpha: number;
+  trainingRows: number;
+  numericFeatures: string[];
+  categoricalFeatures: string[];
+  numericStats: Record<string, { mean: number; std: number }>;
+  categoryValues: Record<string, string[]>;
+  intercept: number;
+  coefficients: number[];
+} = ${JSON.stringify(rating)};
 
 export const reviewDemandArtifact: {
   categoryLabels: string[];
@@ -284,5 +416,6 @@ export const reviewDemandArtifact: {
 await mkdir(path.dirname(outPath), { recursive: true });
 await writeFile(outPath, output);
 console.log(`Wrote ${outPath}`);
+console.log(`Ridge rating rows: ${rating.trainingRows}`);
 console.log(`KNN rows: ${knn.rows.length}`);
 console.log(`Review rows: ${reviews.rows.length}`);

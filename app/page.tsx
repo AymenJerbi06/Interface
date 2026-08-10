@@ -18,8 +18,6 @@ type CityName =
   | "New Westminster"
   | "Coquitlam";
 
-type GuideKey = "Explore" | "Features" | "Results";
-
 type LocationInput = {
   address: string;
   city: CityName;
@@ -175,23 +173,20 @@ const presets: Preset[] = [
   },
 ];
 
-const guideContent: Record<GuideKey, { title: string; text: string; stat: string }> = {
-  Explore: {
-    title: "Choose a restaurant or cafe location",
-    text: "Type an address, choose the city and category, or click the map to set a custom point.",
-    stat: "6 cities",
+const instructionSteps = [
+  {
+    title: "Select the location",
+    text: "Type an address, choose a city, or click one of the map markers.",
   },
-  Features: {
-    title: "Generate the project features",
-    text: "The interface exposes city, category, income, density, age, competition, transit, coordinates, and price level.",
-    stat: "8 feature groups",
+  {
+    title: "Adjust the model inputs",
+    text: "Set the restaurant category, price level, demographics, competition, and transit values.",
   },
-  Results: {
-    title: "Read the two model outputs",
-    text: "The interface shows expected Yelp rating and success classification from the current data-backed adapter.",
-    stat: "2 outputs",
+  {
+    title: "Refresh and read outputs",
+    text: "Use the button to update the rating regression output and the success classifier output.",
   },
-};
+];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -324,11 +319,64 @@ function MapPicker({
 export default function Home() {
   const [input, setInput] = useState<LocationInput>(presets[0]);
   const [runState, setRunState] = useState("Ready for input");
-  const [activeGuide, setActiveGuide] = useState<GuideKey>("Explore");
   const [menuOpen, setMenuOpen] = useState(false);
 
   const result = useMemo(() => predictLocation(input), [input]);
-  const currentGuide = guideContent[activeGuide];
+  const featureRows = useMemo(
+    () => [
+      {
+        label: "city",
+        value: input.city,
+        usage: "Rating regression",
+      },
+      {
+        label: "primary_category",
+        value: input.category,
+        usage: "Rating regression",
+      },
+      {
+        label: "median_income",
+        value: `$${formatNumber(input.medianIncome)}`,
+        usage: "Both models",
+      },
+      {
+        label: "latitude",
+        value: input.latitude.toFixed(5),
+        usage: "Rating regression",
+      },
+      {
+        label: "longitude",
+        value: input.longitude.toFixed(5),
+        usage: "Rating regression",
+      },
+      {
+        label: "pop_density_sqkm",
+        value: formatNumber(input.popDensity),
+        usage: "Success classifier",
+      },
+      {
+        label: "pct_age_20_39",
+        value: `${input.ageShare}%`,
+        usage: "Success classifier",
+      },
+      {
+        label: "competitor_count_500m",
+        value: String(input.competitorCount),
+        usage: "Success classifier",
+      },
+      {
+        label: "nearest_transit_distance_m",
+        value: String(input.transitDistance),
+        usage: "Success classifier",
+      },
+      {
+        label: "price_level",
+        value: String(input.priceLevel),
+        usage: "Rating regression",
+      },
+    ],
+    [input],
+  );
 
   const applyPreset = useCallback((preset: Preset) => {
     setInput({ ...preset });
@@ -373,7 +421,7 @@ export default function Home() {
   }
 
   function runModels() {
-    setRunState("Model set refreshed");
+    setRunState("Predictions refreshed");
   }
 
   function focusLocationInput() {
@@ -462,22 +510,17 @@ export default function Home() {
       </section>
 
       <section className="interface-section" id="map" aria-labelledby="interface-title">
-        <div className="section-kicker">How the interface works</div>
+        <div className="section-kicker">How to use the interface</div>
         <div className="interface-grid">
-          <div className="interface-tabs" role="tablist" aria-label="Interface workflow">
-            {(Object.keys(guideContent) as GuideKey[]).map((key) => (
-              <button
-                aria-selected={activeGuide === key}
-                className={activeGuide === key ? "workflow-tab active" : "workflow-tab"}
-                key={key}
-                onClick={() => setActiveGuide(key)}
-                role="tab"
-                type="button"
-              >
-                {key}
-              </button>
+          <ol className="instruction-rail" aria-label="Website instructions">
+            {instructionSteps.map((step, index) => (
+              <li className="instruction-step" key={step.title}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <strong>{step.title}</strong>
+                <p>{step.text}</p>
+              </li>
             ))}
-          </div>
+          </ol>
 
           <section className="map-phone" aria-label="Metro Vancouver map picker">
             <div className="phone-topline">
@@ -494,9 +537,12 @@ export default function Home() {
           </section>
 
           <article className="workflow-copy">
-            <span>{currentGuide.stat}</span>
-            <h3>{currentGuide.title}</h3>
-            <p>{currentGuide.text}</p>
+            <span>2 outputs</span>
+            <h3>One form, two model paths</h3>
+            <p>
+              The expected rating and success classification use different model feature sets. Changing an input can
+              affect one output without affecting the other.
+            </p>
           </article>
         </div>
       </section>
@@ -631,10 +677,12 @@ export default function Home() {
             <span>Model output</span>
             <h2 id="results-title">Location model results</h2>
             <p className="model-source">
-              Current live outputs use a browser-side KNN-style nearest-neighbor adapter built from{" "}
-              {formatNumber(projectModelMetadata.classificationTrainingRows)} project training rows. The expected Yelp
-              rating is estimated from <code>target_rating</code>; success classification uses{" "}
-              <code>target_is_successful</code>. Exported Python model files are not connected yet.
+              Live output sources are separated by model. Expected Yelp rating uses a browser-side Ridge regression
+              replica trained on {formatNumber(projectModelMetadata.ratingTrainingRows)}{" "}
+              <code>location-information.csv</code> rows with <code>target_rating</code>. Success classification uses a
+              browser-side KNN classifier replica trained on{" "}
+              {formatNumber(projectModelMetadata.classificationTrainingRows)} <code>yelp-and-demo-info.csv</code> rows
+              with <code>target_is_successful</code>.
             </p>
           </div>
 
@@ -642,7 +690,7 @@ export default function Home() {
             <article className="metric-card highlight">
               <span>Expected Yelp rating</span>
               <strong>{result.rating.toFixed(2)} / 5.0</strong>
-              <small>KNN-style estimate from similar rows</small>
+              <small>Ridge regression output from <code>target_rating</code></small>
               <div className="bar" aria-label={`Expected rating ${result.rating.toFixed(2)} out of 5`}>
                 <span style={{ width: `${result.ratingPercent}%` }} />
               </div>
@@ -657,42 +705,17 @@ export default function Home() {
 
           <div className="feature-table-heading">
             <span>Generated input features</span>
-            <small>These values are model inputs, not extra model outputs.</small>
+            <small>Feature usage is model-specific; these values are not extra outputs.</small>
           </div>
 
           <div className="feature-table" aria-label="Generated features">
-            <div>
-              <span>city</span>
-              <strong>{input.city}</strong>
-            </div>
-            <div>
-              <span>primary_category</span>
-              <strong>{input.category}</strong>
-            </div>
-            <div>
-              <span>median_income</span>
-              <strong>${formatNumber(input.medianIncome)}</strong>
-            </div>
-            <div>
-              <span>pop_density_sqkm</span>
-              <strong>{formatNumber(input.popDensity)}</strong>
-            </div>
-            <div>
-              <span>pct_age_20_39</span>
-              <strong>{input.ageShare}%</strong>
-            </div>
-            <div>
-              <span>competitor_count_500m</span>
-              <strong>{input.competitorCount}</strong>
-            </div>
-            <div>
-              <span>nearest_transit_distance_m</span>
-              <strong>{input.transitDistance}</strong>
-            </div>
-            <div>
-              <span>price_level</span>
-              <strong>{input.priceLevel}</strong>
-            </div>
+            {featureRows.map((row) => (
+              <div key={row.label}>
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+                <small>{row.usage}</small>
+              </div>
+            ))}
           </div>
         </div>
       </section>

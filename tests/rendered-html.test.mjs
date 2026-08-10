@@ -38,15 +38,23 @@ test("server-renders the CMPT 310 interface", async () => {
   assert.match(html, /Expected Yelp rating/);
   assert.match(html, /Success classification/);
   assert.match(html, /Location model results/);
-  assert.match(html, /browser-side KNN-style nearest-neighbor adapter/);
+  assert.match(html, /How to use the interface/);
+  assert.match(html, /Select the location/);
+  assert.match(html, /Adjust the model inputs/);
+  assert.match(html, /Refresh and read outputs/);
+  assert.match(html, /Ridge regression/);
+  assert.match(html, /KNN classifier/);
+  assert.match(html, /location-information\.csv/);
+  assert.match(html, /yelp-and-demo-info\.csv/);
   assert.match(html, /target_rating/);
   assert.match(html, /target_is_successful/);
   assert.match(html, /Generated input features/);
-  assert.match(html, /These values are model inputs, not extra model outputs/);
+  assert.match(html, /Feature usage is model-specific/);
   assert.doesNotMatch(html, /Restaurant success markets|Location contract|Restaurant contract|Discover Trade Settle|prediction markets|market odds/i);
   assert.doesNotMatch(html, /Predicted restaurant performance for this location|Live estimate/i);
   assert.doesNotMatch(html, /Aymen|interface task|interface milestone/i);
   assert.doesNotMatch(html, /Predicted review demand|Feature readiness|Success probability/i);
+  assert.doesNotMatch(html, /KNN-style estimate|KNN-style nearest-neighbor adapter/i);
   assert.doesNotMatch(
     html,
     /\b(Downtown|Mall|Suburban|Campus)\b|Model comparison|Project visuals|Charts from the GitHub repository/i,
@@ -70,15 +78,23 @@ test("uses project data, map package, and removes non-output sections", async ()
   assert.match(page, /leaflet/);
   assert.match(page, /predictLocation/);
   assert.match(page, /projectCategoryLabels/);
+  assert.match(page, /ratingTrainingRows/);
+  assert.match(page, /instruction-rail/);
   assert.match(page, /target_is_successful/);
   assert.doesNotMatch(page, /signal-ticker|guardrail-section|model-compare-section|visual-section/);
-  assert.doesNotMatch(page, /Predicted review demand|Feature readiness|Success probability|Ridge regression/);
+  assert.doesNotMatch(page, /workflow-tab|interface-tabs/);
+  assert.doesNotMatch(page, /Predicted review demand|Feature readiness|Success probability/);
+  assert.doesNotMatch(page, /KNN-style estimate|KNN-style nearest-neighbor adapter/);
   assert.doesNotMatch(page, /model-assets\//);
   assert.match(model, /nearestKnnRows/);
+  assert.match(model, /ridgeRatingArtifact/);
+  assert.match(model, /predictRating/);
   assert.match(model, /reviewDemandArtifact/);
   assert.match(model, /projectCategoryLabels/);
   assert.doesNotMatch(model, /predictReviewDemand|calculateFeatureReadiness/);
   assert.match(modelRows, /classificationTrainingRows": 1535/);
+  assert.match(modelRows, /ratingTrainingRows": 550/);
+  assert.match(modelRows, /ridgeRatingArtifact/);
   assert.match(modelRows, /reviewTrainingRows": 550/);
   assert.match(modelRows, /CMPT310_Project/);
   assert.match(layout, /title:\s*"CMPT 310 Location AI"/);

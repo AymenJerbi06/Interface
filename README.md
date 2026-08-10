@@ -19,7 +19,9 @@ Open `http://localhost:3000/`.
 
 Reference repository: `https://github.com/preethi-ca/CMPT310_Project`
 
-The current version uses a browser-side model adapter generated from the reference repo CSVs. It ports the KNN feature-engineering path from `project_helper.py` and `knn_classification.py`, bundles 1,535 classification/rating rows, and predicts from `target_rating` and `target_is_successful`. The `location-information.csv` category labels are used only to keep the category dropdown aligned with the project dataset, not as a visible review-demand output.
+The current version uses browser-side replicas generated from the reference repo CSVs. Expected Yelp rating uses the Ridge regression feature set from `linear-regression.py`, trained on 550 `location-information.csv` rows and `target_rating`. Success/non-success classification uses the KNN feature-engineering path from `project_helper.py` and `knn_classification.py`, trained on 1,535 `yelp-and-demo-info.csv` rows and `target_is_successful`.
+
+The two outputs use different feature sets. The interface labels generated inputs by model usage so it is clear that changing a field can affect one output without affecting the other. The `location-information.csv` category labels are also used to keep the category dropdown aligned with the project dataset, not as a visible review-demand output.
 
 The reference repo currently contains training scripts, CSVs, and charts, but no exported `.pkl`, `.joblib`, `.json`, or API-ready trained model files. When the team exports trained Ridge/KNN/XGBoost/Decision Tree artifacts, the interface can replace the local adapter with a server/API route that loads those artifacts.
 
