@@ -713,8 +713,9 @@ export default function Home() {
               <h2 id="results-title">Location model results</h2>
               <p className="model-source">
                 Rating models use <code>target_rating</code> from {formatNumber(projectModelMetadata.ratingTrainingRows)}{" "}
-                <code>location-information.csv</code> rows. Classifiers use <code>target_is_successful</code> from{" "}
-                {formatNumber(projectModelMetadata.classificationTrainingRows)} <code>yelp-and-demo-info.csv</code> rows.
+                <code>{projectModelMetadata.locationSourceFile}</code> rows. Classifiers use{" "}
+                <code>target_is_successful</code> from {formatNumber(projectModelMetadata.classificationTrainingRows)}{" "}
+                <code>{projectModelMetadata.yelpSourceFile}</code> rows.
               </p>
             </div>
 

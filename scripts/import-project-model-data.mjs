@@ -8,9 +8,30 @@ if (!repoRoot) {
   process.exit(1);
 }
 
-const yelpPath = path.join(repoRoot, "yelp-and-demo-info.csv");
-const locationPath = path.join(repoRoot, "location-information.csv");
+const yelpSourceFile = "yelp-and-demo-info.csv";
+const locationSourceCandidates = ["location-information-with-competitors.csv", "location-information.csv"];
+const yelpPath = path.join(repoRoot, yelpSourceFile);
 const outPath = path.resolve("app/model-data/projectModelRows.ts");
+
+async function readFirstExisting(root, sourceFiles) {
+  const missing = [];
+
+  for (const sourceFile of sourceFiles) {
+    try {
+      return {
+        sourceFile,
+        text: await readFile(path.join(root, sourceFile), "utf8"),
+      };
+    } catch (error) {
+      if (error?.code !== "ENOENT") {
+        throw error;
+      }
+      missing.push(sourceFile);
+    }
+  }
+
+  throw new Error(`Could not find any location source CSV. Tried: ${missing.join(", ")}`);
+}
 
 function parseCsv(text) {
   const rows = [];
@@ -597,13 +618,13 @@ function buildReviewArtifact(rows) {
   };
 }
 
-const [yelpText, locationText] = await Promise.all([
+const [yelpText, locationSource] = await Promise.all([
   readFile(yelpPath, "utf8"),
-  readFile(locationPath, "utf8"),
+  readFirstExisting(repoRoot, locationSourceCandidates),
 ]);
 
 const yelpRows = parseCsv(yelpText);
-const locationRows = parseCsv(locationText);
+const locationRows = parseCsv(locationSource.text);
 const knn = buildKnnArtifact(yelpRows);
 const boosted = buildBoostedSuccessArtifact(knn);
 const rating = buildRidgeRatingArtifact(locationRows);
@@ -611,7 +632,7 @@ const decisionTreeRating = buildDecisionTreeRatingArtifact(locationRows);
 const reviews = buildReviewArtifact(locationRows);
 
 const output = `// Generated from https://github.com/preethi-ca/CMPT310_Project on ${new Date().toISOString()}.
-// Source files: yelp-and-demo-info.csv, location-information.csv.
+// Source files: ${yelpSourceFile}, ${locationSource.sourceFile}.
 
 export type KNNTrainingRow = [number[], number];
 export type ReviewDemandRow = [string, string, number, number, number, number];
@@ -625,14 +646,20 @@ export type TreeNode = {
 
 export const projectModelMetadata: {
   sourceRepo: string;
+  yelpSourceFile: string;
+  locationSourceFile: string;
   yelpRows: number;
+  locationRows: number;
   ratingTrainingRows: number;
   classificationTrainingRows: number;
   reviewTrainingRows: number;
 } = ${JSON.stringify(
   {
     sourceRepo: "https://github.com/preethi-ca/CMPT310_Project",
+    yelpSourceFile,
+    locationSourceFile: locationSource.sourceFile,
     yelpRows: yelpRows.length,
+    locationRows: locationRows.length,
     ratingTrainingRows: rating.trainingRows,
     classificationTrainingRows: knn.rows.length,
     reviewTrainingRows: reviews.rows.length,
@@ -693,6 +720,7 @@ export const reviewDemandArtifact: {
 await mkdir(path.dirname(outPath), { recursive: true });
 await writeFile(outPath, output);
 console.log(`Wrote ${outPath}`);
+console.log(`Location source: ${locationSource.sourceFile}`);
 console.log(`Ridge rating rows: ${rating.trainingRows}`);
 console.log(`Decision tree rating rows: ${decisionTreeRating.trainingRows}`);
 console.log(`KNN rows: ${knn.rows.length}`);

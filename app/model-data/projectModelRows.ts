@@ -1,5 +1,5 @@
-// Generated from https://github.com/preethi-ca/CMPT310_Project on 2026-08-10T07:36:36.589Z.
-// Source files: yelp-and-demo-info.csv, location-information.csv.
+// Generated from https://github.com/preethi-ca/CMPT310_Project on 2026-08-10T20:56:13.521Z.
+// Source files: yelp-and-demo-info.csv, location-information-with-competitors.csv.
 
 export type KNNTrainingRow = [number[], number];
 export type ReviewDemandRow = [string, string, number, number, number, number];
@@ -13,13 +13,19 @@ export type TreeNode = {
 
 export const projectModelMetadata: {
   sourceRepo: string;
+  yelpSourceFile: string;
+  locationSourceFile: string;
   yelpRows: number;
+  locationRows: number;
   ratingTrainingRows: number;
   classificationTrainingRows: number;
   reviewTrainingRows: number;
 } = {
   "sourceRepo": "https://github.com/preethi-ca/CMPT310_Project",
+  "yelpSourceFile": "yelp-and-demo-info.csv",
+  "locationSourceFile": "location-information-with-competitors.csv",
   "yelpRows": 1535,
+  "locationRows": 550,
   "ratingTrainingRows": 550,
   "classificationTrainingRows": 1535,
   "reviewTrainingRows": 550

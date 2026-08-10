@@ -47,7 +47,7 @@ test("server-renders the CMPT 310 interface", async () => {
   assert.match(html, /Decision tree regression/);
   assert.match(html, /KNN classifier/);
   assert.match(html, /XGBoost classifier/);
-  assert.match(html, /location-information\.csv/);
+  assert.match(html, /location-information-with-competitors\.csv/);
   assert.match(html, /yelp-and-demo-info\.csv/);
   assert.match(html, /target_rating/);
   assert.match(html, /target_is_successful/);
@@ -113,11 +113,14 @@ test("uses project data, map package, and removes non-output sections", async ()
   assert.doesNotMatch(model, /predictReviewDemand|calculateFeatureReadiness/);
   assert.match(modelRows, /classificationTrainingRows": 1535/);
   assert.match(modelRows, /ratingTrainingRows": 550/);
+  assert.match(modelRows, /locationSourceFile": "location-information-with-competitors\.csv"/);
+  assert.match(modelRows, /locationRows": 550/);
   assert.match(modelRows, /ridgeRatingArtifact/);
   assert.match(modelRows, /decisionTreeRatingArtifact/);
   assert.match(modelRows, /boostedSuccessArtifact/);
   assert.match(modelRows, /reviewTrainingRows": 550/);
   assert.match(modelRows, /CMPT310_Project/);
+  assert.match(readme, /location-information-with-competitors\.csv/);
   assert.match(layout, /title:\s*"CMPT 310 Location AI"/);
   assert.match(packageJson, /"leaflet"/);
   assert.match(packageJson, /"lucide-react"/);
