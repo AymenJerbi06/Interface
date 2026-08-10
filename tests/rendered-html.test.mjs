@@ -87,6 +87,8 @@ test("uses project data, map package, and removes non-output sections", async ()
   assert.match(page, /ratingTrainingRows/);
   assert.match(page, /predictor-shell/);
   assert.match(page, /workspace-grid/);
+  assert.match(page, /map-input-stack/);
+  assert.match(page, /className="map-input-stack"[\s\S]*className="map-panel"[\s\S]*className="input-panel"[\s\S]*className="results-board"/);
   assert.match(page, /map-panel/);
   assert.match(page, /ratingModelOptions/);
   assert.match(page, /successModelOptions/);

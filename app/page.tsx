@@ -538,216 +538,218 @@ export default function Home() {
         </div>
 
         <div className="workspace-grid">
-          <section className="map-panel" aria-label="Metro Vancouver map picker">
-            <div className="phone-topline">
-              <span>Map selection</span>
-              <strong>
-                {input.latitude.toFixed(4)}, {input.longitude.toFixed(4)}
-              </strong>
+          <div className="map-input-stack">
+            <section className="map-panel" aria-label="Metro Vancouver map picker">
+              <div className="phone-topline">
+                <span>Map selection</span>
+                <strong>
+                  {input.latitude.toFixed(4)}, {input.longitude.toFixed(4)}
+                </strong>
+              </div>
+              <MapPicker input={input} onPresetSelect={applyPreset} onMapSelect={applyMapPoint} />
+              <div className="phone-bottomline">
+                <span>{input.city}</span>
+                <strong>{input.address}</strong>
+              </div>
+            </section>
+
+            <section className="input-panel" aria-labelledby="input-title">
+              <div className="panel-heading">
+                <div>
+                  <span id="input-title">Location input</span>
+                  <small className="panel-status" aria-live="polite">
+                    {runState}
+                  </small>
+                </div>
+              </div>
+
+              <label className="field wide-field" htmlFor="location-address">
+                <span>Address or area</span>
+                <input
+                  id="location-address"
+                  value={input.address}
+                  onChange={(event) => {
+                    setInput((current) => ({ ...current, address: event.target.value }));
+                    setRunState("Edited");
+                  }}
+                  placeholder="Example: Robson St, Vancouver, BC"
+                />
+              </label>
+
+              <div className="field-grid">
+                <label className="field">
+                  <span>Rating model</span>
+                  <select
+                    value={ratingModel}
+                    onChange={(event) => {
+                      setRatingModel(event.target.value as RatingModelId);
+                      setRunState("Model changed");
+                    }}
+                  >
+                    {ratingModelOptions.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>Success model</span>
+                  <select
+                    value={successModel}
+                    onChange={(event) => {
+                      setSuccessModel(event.target.value as SuccessModelId);
+                      setRunState("Model changed");
+                    }}
+                  >
+                    {successModelOptions.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>City</span>
+                  <select value={input.city} onChange={(event) => updateCity(event.target.value as CityName)}>
+                    {Object.keys(cityDefaults).map((city) => (
+                      <option key={city}>{city}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>Category</span>
+                  <select
+                    value={input.category}
+                    onChange={(event) => {
+                      setInput((current) => ({ ...current, category: event.target.value }));
+                      setRunState("Edited");
+                    }}
+                  >
+                    {categories.map((category) => (
+                      <option key={category}>{category}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>Price level</span>
+                  <select value={input.priceLevel} onChange={(event) => updateNumber("priceLevel", event.target.value)}>
+                    <option value={1}>1 - budget</option>
+                    <option value={2}>2 - moderate</option>
+                    <option value={3}>3 - premium</option>
+                    <option value={4}>4 - high end</option>
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>Median income</span>
+                  <input
+                    min={25000}
+                    max={70000}
+                    step={500}
+                    type="number"
+                    value={input.medianIncome}
+                    onChange={(event) => updateNumber("medianIncome", event.target.value)}
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Population density</span>
+                  <input
+                    min={1000}
+                    max={15000}
+                    step={100}
+                    type="number"
+                    value={input.popDensity}
+                    onChange={(event) => updateNumber("popDensity", event.target.value)}
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Age 20-39 percent</span>
+                  <input
+                    min={10}
+                    max={65}
+                    step={0.1}
+                    type="number"
+                    value={input.ageShare}
+                    onChange={(event) => updateNumber("ageShare", event.target.value)}
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Competitors 500m</span>
+                  <input
+                    min={0}
+                    max={40}
+                    type="number"
+                    value={input.competitorCount}
+                    onChange={(event) => updateNumber("competitorCount", event.target.value)}
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Nearest transit meters</span>
+                  <input
+                    min={0}
+                    max={2000}
+                    step={10}
+                    type="number"
+                    value={input.transitDistance}
+                    onChange={(event) => updateNumber("transitDistance", event.target.value)}
+                  />
+                </label>
+              </div>
+            </section>
+          </div>
+
+          <section className="results-board" id="results" aria-labelledby="results-title">
+            <div className="board-heading">
+              <span>Model output</span>
+              <h2 id="results-title">Location model results</h2>
+              <p className="model-source">
+                Rating models use <code>target_rating</code> from {formatNumber(projectModelMetadata.ratingTrainingRows)}{" "}
+                <code>location-information.csv</code> rows. Classifiers use <code>target_is_successful</code> from{" "}
+                {formatNumber(projectModelMetadata.classificationTrainingRows)} <code>yelp-and-demo-info.csv</code> rows.
+              </p>
             </div>
-            <MapPicker input={input} onPresetSelect={applyPreset} onMapSelect={applyMapPoint} />
-            <div className="phone-bottomline">
-              <span>{input.city}</span>
-              <strong>{input.address}</strong>
+
+            <div className="metric-grid">
+              <article className="metric-card highlight">
+                <span>Expected Yelp rating</span>
+                <strong>{result.rating.toFixed(2)} / 5.0</strong>
+                <small>{result.ratingModelLabel} output from <code>target_rating</code></small>
+                <div className="bar" aria-label={`Expected rating ${result.rating.toFixed(2)} out of 5`}>
+                  <span style={{ width: `${result.ratingPercent}%` }} />
+                </div>
+              </article>
+
+              <article className="metric-card classification">
+                <span>Success classification</span>
+                <strong>{result.successClassification}</strong>
+                <small>{result.successModelLabel} label from <code>target_is_successful</code></small>
+              </article>
+            </div>
+
+            <div className="feature-table-heading">
+              <span>Generated input features</span>
+              <small>Feature usage is model-specific; these values are not extra outputs.</small>
+            </div>
+
+            <div className="feature-table" aria-label="Generated features">
+              {featureRows.map((row) => (
+                <div key={row.label}>
+                  <span>{row.label}</span>
+                  <strong>{row.value}</strong>
+                  <small>{row.usage}</small>
+                </div>
+              ))}
             </div>
           </section>
-
-          <section className="input-panel" aria-labelledby="input-title">
-          <div className="panel-heading">
-            <div>
-              <span id="input-title">Location input</span>
-              <small className="panel-status" aria-live="polite">
-                {runState}
-              </small>
-            </div>
-          </div>
-
-          <label className="field wide-field" htmlFor="location-address">
-            <span>Address or area</span>
-            <input
-              id="location-address"
-              value={input.address}
-              onChange={(event) => {
-                setInput((current) => ({ ...current, address: event.target.value }));
-                setRunState("Edited");
-              }}
-              placeholder="Example: Robson St, Vancouver, BC"
-            />
-          </label>
-
-          <div className="field-grid">
-            <label className="field">
-              <span>Rating model</span>
-              <select
-                value={ratingModel}
-                onChange={(event) => {
-                  setRatingModel(event.target.value as RatingModelId);
-                  setRunState("Model changed");
-                }}
-              >
-                {ratingModelOptions.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Success model</span>
-              <select
-                value={successModel}
-                onChange={(event) => {
-                  setSuccessModel(event.target.value as SuccessModelId);
-                  setRunState("Model changed");
-                }}
-              >
-                {successModelOptions.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>City</span>
-              <select value={input.city} onChange={(event) => updateCity(event.target.value as CityName)}>
-                {Object.keys(cityDefaults).map((city) => (
-                  <option key={city}>{city}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Category</span>
-              <select
-                value={input.category}
-                onChange={(event) => {
-                  setInput((current) => ({ ...current, category: event.target.value }));
-                  setRunState("Edited");
-                }}
-              >
-                {categories.map((category) => (
-                  <option key={category}>{category}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Price level</span>
-              <select value={input.priceLevel} onChange={(event) => updateNumber("priceLevel", event.target.value)}>
-                <option value={1}>1 - budget</option>
-                <option value={2}>2 - moderate</option>
-                <option value={3}>3 - premium</option>
-                <option value={4}>4 - high end</option>
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Median income</span>
-              <input
-                min={25000}
-                max={70000}
-                step={500}
-                type="number"
-                value={input.medianIncome}
-                onChange={(event) => updateNumber("medianIncome", event.target.value)}
-              />
-            </label>
-
-            <label className="field">
-              <span>Population density</span>
-              <input
-                min={1000}
-                max={15000}
-                step={100}
-                type="number"
-                value={input.popDensity}
-                onChange={(event) => updateNumber("popDensity", event.target.value)}
-              />
-            </label>
-
-            <label className="field">
-              <span>Age 20-39 percent</span>
-              <input
-                min={10}
-                max={65}
-                step={0.1}
-                type="number"
-                value={input.ageShare}
-                onChange={(event) => updateNumber("ageShare", event.target.value)}
-              />
-            </label>
-
-            <label className="field">
-              <span>Competitors 500m</span>
-              <input
-                min={0}
-                max={40}
-                type="number"
-                value={input.competitorCount}
-                onChange={(event) => updateNumber("competitorCount", event.target.value)}
-              />
-            </label>
-
-            <label className="field">
-              <span>Nearest transit meters</span>
-              <input
-                min={0}
-                max={2000}
-                step={10}
-                type="number"
-                value={input.transitDistance}
-                onChange={(event) => updateNumber("transitDistance", event.target.value)}
-              />
-            </label>
-          </div>
-        </section>
-
-        <section className="results-board" id="results" aria-labelledby="results-title">
-          <div className="board-heading">
-            <span>Model output</span>
-            <h2 id="results-title">Location model results</h2>
-            <p className="model-source">
-              Rating models use <code>target_rating</code> from {formatNumber(projectModelMetadata.ratingTrainingRows)}{" "}
-              <code>location-information.csv</code> rows. Classifiers use <code>target_is_successful</code> from{" "}
-              {formatNumber(projectModelMetadata.classificationTrainingRows)} <code>yelp-and-demo-info.csv</code> rows.
-            </p>
-          </div>
-
-          <div className="metric-grid">
-            <article className="metric-card highlight">
-              <span>Expected Yelp rating</span>
-              <strong>{result.rating.toFixed(2)} / 5.0</strong>
-              <small>{result.ratingModelLabel} output from <code>target_rating</code></small>
-              <div className="bar" aria-label={`Expected rating ${result.rating.toFixed(2)} out of 5`}>
-                <span style={{ width: `${result.ratingPercent}%` }} />
-              </div>
-            </article>
-
-            <article className="metric-card classification">
-              <span>Success classification</span>
-              <strong>{result.successClassification}</strong>
-              <small>{result.successModelLabel} label from <code>target_is_successful</code></small>
-            </article>
-          </div>
-
-          <div className="feature-table-heading">
-            <span>Generated input features</span>
-            <small>Feature usage is model-specific; these values are not extra outputs.</small>
-          </div>
-
-          <div className="feature-table" aria-label="Generated features">
-            {featureRows.map((row) => (
-              <div key={row.label}>
-                <span>{row.label}</span>
-                <strong>{row.value}</strong>
-                <small>{row.usage}</small>
-              </div>
-            ))}
-          </div>
-        </section>
         </div>
       </section>
 

@@ -141,11 +141,17 @@ main {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(360px, 0.86fr) minmax(340px, 0.78fr) minmax(460px, 1.08fr);
+  grid-template-columns: minmax(520px, 0.95fr) minmax(520px, 1.05fr);
   gap: 16px;
   align-items: start;
   width: min(1510px, 100%);
   margin: 0 auto;
+}
+
+.map-input-stack {
+  display: grid;
+  gap: 16px;
+  align-content: start;
 }
 
 .map-panel {
