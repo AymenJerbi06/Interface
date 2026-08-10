@@ -4,7 +4,7 @@ Team website prototype for the CMPT 310 AI Introduction project interface.
 
 The app lets a user enter a Metro Vancouver restaurant or cafe location, choose which project model to use, adjust generated feature values, and view the two model outputs: expected Yelp rating and success/non-success classification.
 
-The current visual direction is inspired by Wealthsimple Predict for styling only: dark hero area, muted neutral/sage palette, large rounded typography, soft motion, guided instructions, and polished summary cards adapted to restaurant-location decisions.
+The current visual direction is inspired by Wealthsimple Predict for styling only: muted neutral/sage palette, large rounded typography, soft motion, and polished summary cards adapted to restaurant-location decisions. The first screen is the working model interface rather than a landing page.
 
 ## Run Locally
 
@@ -44,3 +44,4 @@ This app can be deployed as a static/reactive site because prediction currently 
 - Data-backed outputs for expected Yelp rating and success/non-success classification
 - Selectors for Linear/Ridge Regression versus Decision Tree rating and KNN versus XGBoost-style success classification
 - A clear generated-feature table labeled as model inputs, not extra outputs
+- No decorative navigation buttons or instruction cards that look clickable without changing the model output

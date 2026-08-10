@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  BarChart3,
-  Menu,
-  Search,
-} from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
 import {
   defaultModelOptions,
@@ -178,21 +174,6 @@ const presets: Preset[] = [
     ageShare: 35.2,
     competitorCount: 10,
     transitDistance: 260,
-  },
-];
-
-const instructionSteps = [
-  {
-    title: "Select the location",
-    text: "Type an address, choose a city, or click one of the map markers.",
-  },
-  {
-    title: "Choose the models",
-    text: "Pick the rating model and the success classification model.",
-  },
-  {
-    title: "Adjust the inputs",
-    text: "Change the restaurant category, price, demographics, competition, and transit values.",
   },
 ];
 
@@ -398,7 +379,6 @@ export default function Home() {
   const [runState, setRunState] = useState("Ready for input");
   const [ratingModel, setRatingModel] = useState<RatingModelId>(defaultModelOptions.ratingModel);
   const [successModel, setSuccessModel] = useState<SuccessModelId>(defaultModelOptions.successModel);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const result = useMemo(() => predictLocation(input, { ratingModel, successModel }), [input, ratingModel, successModel]);
   const featureRows = useMemo(
@@ -499,17 +479,10 @@ export default function Home() {
     setRunState("Edited");
   }
 
-  function focusLocationInput() {
-    const inputElement = document.getElementById("location-address") as HTMLInputElement | null;
-    inputElement?.scrollIntoView({ behavior: "smooth", block: "center" });
-    inputElement?.focus({ preventScroll: true });
-  }
-
   return (
     <main>
-      <section className="hero" id="predict" aria-labelledby="hero-title">
-        <div className="hero-noise" aria-hidden="true" />
-        <header className="topbar">
+      <section className="predictor-shell" id="predict" aria-labelledby="hero-title">
+        <header className="simple-topbar">
           <a className="brand" href="#predict" aria-label="CMPT 310 LocationAI home">
             <span className="brand-mark" aria-hidden="true">
               <span />
@@ -519,85 +492,23 @@ export default function Home() {
             </span>
             <span className="brand-word">LocationAI</span>
           </a>
-
-          <nav className="topnav" aria-label="Primary navigation">
-            <button className="icon-button" type="button" onClick={focusLocationInput} aria-label="Find location input">
-              <Search size={22} strokeWidth={2.25} />
-            </button>
-            <a className="nav-pill" href="#map">
-              Open interface
-            </a>
-            <a className="nav-pill primary" href="#results">
-              View output
-            </a>
-            <button
-              className="icon-button"
-              type="button"
-              onClick={() => setMenuOpen((current) => !current)}
-              aria-expanded={menuOpen}
-              aria-label="Open section menu"
-            >
-              <Menu size={24} strokeWidth={2.25} />
-            </button>
-          </nav>
-
-          {menuOpen ? (
-            <div className="menu-popover">
-              <a href="#map" onClick={() => setMenuOpen(false)}>
-                Map and inputs
-              </a>
-              <a href="#results" onClick={() => setMenuOpen(false)}>
-                Results
-              </a>
-            </div>
-          ) : null}
+          <span>CMPT 310 model interface</span>
         </header>
 
-        <div className="hero-content">
-          <div className="hero-copy">
-            <p className="product-lockup">
-              <BarChart3 size={24} strokeWidth={2.25} />
-              CMPT 310 interface
-            </p>
-            <h1 id="hero-title">Predict restaurant location success.</h1>
-            <p>
-              Select a Metro Vancouver restaurant or cafe location, choose the project models, and view the expected
-              Yelp rating plus success classification.
-            </p>
-            <div className="hero-actions">
-              <a className="store-pill" href="#map">
-                <span>Start with</span>
-                Map input
-              </a>
-              <a className="store-pill" href="#results">
-                <span>Review</span>
-                Model output
-              </a>
-            </div>
-          </div>
+        <div className="tool-heading">
+          <p className="product-lockup">
+            <BarChart3 size={22} strokeWidth={2.25} />
+            Four model choices
+          </p>
+          <h1 id="hero-title">Restaurant location model</h1>
+          <p>
+            Choose a Metro Vancouver location, select the rating and success models, then adjust the inputs. Outputs
+            update automatically from the project data.
+          </p>
         </div>
-      </section>
 
-      <section className="statement-section" aria-labelledby="statement-title">
-        <h2 id="statement-title">
-          Estimate a location with Linear Regression, Decision Tree, KNN, or XGBoost.
-        </h2>
-      </section>
-
-      <section className="interface-section" id="map" aria-labelledby="interface-title">
-        <div className="section-kicker">How to use the interface</div>
-        <div className="interface-grid">
-          <ol className="instruction-rail" aria-label="Website instructions">
-            {instructionSteps.map((step, index) => (
-              <li className="instruction-step" key={step.title}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <strong>{step.title}</strong>
-                <p>{step.text}</p>
-              </li>
-            ))}
-          </ol>
-
-          <section className="map-phone" aria-label="Metro Vancouver map picker">
+        <div className="workspace-grid">
+          <section className="map-panel" aria-label="Metro Vancouver map picker">
             <div className="phone-topline">
               <span>Map selection</span>
               <strong>
@@ -611,22 +522,10 @@ export default function Home() {
             </div>
           </section>
 
-          <article className="workflow-copy">
-            <span>4 model choices</span>
-            <h3>Choose the model pair</h3>
-            <p>
-              Expected Yelp rating can use Linear/Ridge Regression or Decision Tree Regression. Success classification
-              can use KNN or XGBoost.
-            </p>
-          </article>
-        </div>
-      </section>
-
-      <section className="input-results-section" id="results" aria-labelledby="results-title">
-        <div className="input-panel">
+          <section className="input-panel" aria-labelledby="input-title">
           <div className="panel-heading">
             <div>
-              <span>Location input</span>
+              <span id="input-title">Location input</span>
               <small className="panel-status" aria-live="polite">
                 {runState}
               </small>
@@ -774,10 +673,9 @@ export default function Home() {
               />
             </label>
           </div>
+        </section>
 
-        </div>
-
-        <div className="results-board">
+        <section className="results-board" id="results" aria-labelledby="results-title">
           <div className="board-heading">
             <span>Model output</span>
             <h2 id="results-title">Location model results</h2>
@@ -819,6 +717,7 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </section>
         </div>
       </section>
 

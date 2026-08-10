@@ -30,17 +30,16 @@ test("server-renders the CMPT 310 interface", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>CMPT 310 Location AI<\/title>/i);
-  assert.match(html, /Predict restaurant location success\./);
-  assert.match(html, /CMPT 310 interface/);
+  assert.match(html, /Restaurant location model/);
+  assert.match(html, /CMPT 310 model interface/);
   assert.match(html, /Team project interface/);
   assert.match(html, /OpenStreetMap location selector/);
   assert.match(html, /Expected Yelp rating/);
   assert.match(html, /Success classification/);
   assert.match(html, /Location model results/);
-  assert.match(html, /How to use the interface/);
-  assert.match(html, /Select the location/);
-  assert.match(html, /Choose the models/);
-  assert.match(html, /Adjust the inputs/);
+  assert.match(html, /Outputs update automatically/);
+  assert.match(html, /Four model choices/);
+  assert.match(html, /Map selection/);
   assert.match(html, /Rating model/);
   assert.match(html, /Success model/);
   assert.match(html, /Linear\/Ridge regression/);
@@ -53,7 +52,7 @@ test("server-renders the CMPT 310 interface", async () => {
   assert.match(html, /target_is_successful/);
   assert.match(html, /Generated input features/);
   assert.match(html, /Feature usage is model-specific/);
-  assert.doesNotMatch(html, /Refresh prediction|Refresh and read outputs/i);
+  assert.doesNotMatch(html, /Refresh prediction|Refresh and read outputs|Start with|Open interface|View output/i);
   assert.doesNotMatch(html, /Restaurant success markets|Location contract|Restaurant contract|Discover Trade Settle|prediction markets|market odds/i);
   assert.doesNotMatch(html, /Predicted restaurant performance for this location|Live estimate/i);
   assert.doesNotMatch(html, /Aymen|interface task|interface milestone/i);
@@ -83,13 +82,18 @@ test("uses project data, map package, and removes non-output sections", async ()
   assert.match(page, /predictLocation/);
   assert.match(page, /projectCategoryLabels/);
   assert.match(page, /ratingTrainingRows/);
-  assert.match(page, /instruction-rail/);
+  assert.match(page, /predictor-shell/);
+  assert.match(page, /workspace-grid/);
+  assert.match(page, /map-panel/);
   assert.match(page, /ratingModelOptions/);
   assert.match(page, /successModelOptions/);
   assert.match(page, /target_is_successful/);
   assert.doesNotMatch(page, /signal-ticker|guardrail-section|model-compare-section|visual-section/);
-  assert.doesNotMatch(page, /workflow-tab|interface-tabs/);
-  assert.doesNotMatch(page, /Refresh prediction|primary-action/);
+  assert.doesNotMatch(
+    page,
+    /instruction-rail|instruction-step|workflow-tab|interface-tabs|hero-actions|topnav|nav-pill|menu-popover|icon-button|store-pill|statement-section|interface-section|workflow-copy|input-results-section/,
+  );
+  assert.doesNotMatch(page, /Refresh prediction|primary-action|Start with|Open interface|View output/);
   assert.doesNotMatch(page, /Predicted review demand|Feature readiness|Success probability/);
   assert.doesNotMatch(page, /KNN-style estimate|KNN-style nearest-neighbor adapter/);
   assert.doesNotMatch(page, /model-assets\//);
