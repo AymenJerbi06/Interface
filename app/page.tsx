@@ -713,11 +713,9 @@ export default function Home() {
               <h2 id="results-title">Location model results</h2>
               <p className="model-source">
                 Rating models use <code>target_rating</code> from {formatNumber(projectModelMetadata.ratingTrainingRows)}{" "}
-                <code>{projectModelMetadata.locationSourceFile}</code> rows. Classifiers use{" "}
-                <code>target_is_successful</code> from {formatNumber(projectModelMetadata.classificationTrainingRows)}{" "}
-                <code>{projectModelMetadata.yelpSourceFile}</code> rows. The location source includes{" "}
-                <code>competitor_count_500m</code> and <code>nearest_transit_distance_m</code> for the generated feature
-                inputs.
+                <code>{projectModelMetadata.locationSourceFile}</code> rows. Success classifiers return{" "}
+                <code>target_is_successful</code>. The location source includes <code>competitor_count_500m</code> and{" "}
+                <code>nearest_transit_distance_m</code> for the generated feature inputs.
               </p>
             </div>
 

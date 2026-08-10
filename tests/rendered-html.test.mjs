@@ -48,7 +48,6 @@ test("server-renders the CMPT 310 interface", async () => {
   assert.match(html, /KNN classifier/);
   assert.match(html, /XGBoost classifier/);
   assert.match(html, /location-information-with-competitors\.csv/);
-  assert.match(html, /yelp-and-demo-info\.csv/);
   assert.match(html, /target_rating/);
   assert.match(html, /target_is_successful/);
   assert.match(html, /The location source includes/);
@@ -62,6 +61,7 @@ test("server-renders the CMPT 310 interface", async () => {
   assert.doesNotMatch(html, /Aymen|interface task|interface milestone/i);
   assert.doesNotMatch(html, /Predicted review demand|Feature readiness|Success probability/i);
   assert.doesNotMatch(html, /KNN-style estimate|KNN-style nearest-neighbor adapter/i);
+  assert.doesNotMatch(html, /1,535\s*yelp-and-demo-info\.csv\s*rows|yelp-and-demo-info\.csv\s*rows/i);
   assert.doesNotMatch(
     html,
     /\b(Downtown|Mall|Suburban|Campus)\b|Model comparison|Project visuals|Charts from the GitHub repository/i,
