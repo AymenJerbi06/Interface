@@ -30,6 +30,7 @@ test("server-renders the CMPT 310 interface", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>CMPT 310 Location AI<\/title>/i);
+  assert.match(html, /Predict restaurant location success\./);
   assert.match(html, /Restaurant location model/);
   assert.match(html, /CMPT 310 model interface/);
   assert.match(html, /Team project interface/);
@@ -78,6 +79,8 @@ test("uses project data, map package, and removes non-output sections", async ()
   ]);
 
   assert.match(page, /OpenStreetMap/);
+  assert.match(page, /hero-restored/);
+  assert.match(page, /hero-topbar/);
   assert.match(page, /leaflet/);
   assert.match(page, /predictLocation/);
   assert.match(page, /projectCategoryLabels/);

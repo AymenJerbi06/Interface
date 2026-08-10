@@ -178,6 +178,10 @@ main {
   color: var(--cream);
 }
 
+.hero-restored {
+  min-height: 88vh;
+}
+
 .hero::before {
   position: absolute;
   inset: -16%;
@@ -230,6 +234,14 @@ main {
   background: rgba(50, 48, 47, 0.86);
   box-shadow: 0 20px 80px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(18px);
+}
+
+.hero-topbar > span {
+  color: var(--yellow);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .brand {
@@ -361,6 +373,10 @@ main {
   min-height: calc(100vh - 86px);
   margin: 0 auto;
   padding: clamp(54px, 8vw, 108px) 0 clamp(72px, 10vw, 132px);
+}
+
+.hero-restored .hero-content {
+  min-height: calc(88vh - 86px);
 }
 
 .hero-copy {

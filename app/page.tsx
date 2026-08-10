@@ -481,6 +481,36 @@ export default function Home() {
 
   return (
     <main>
+      <section className="hero hero-restored" id="intro" aria-labelledby="intro-title">
+        <div className="hero-noise" aria-hidden="true" />
+        <header className="topbar hero-topbar">
+          <a className="brand" href="#intro" aria-label="CMPT 310 LocationAI home">
+            <span className="brand-mark" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+            </span>
+            <span className="brand-word">LocationAI</span>
+          </a>
+          <span>CMPT 310 model interface</span>
+        </header>
+
+        <div className="hero-content">
+          <div className="hero-copy">
+            <p className="product-lockup">
+              <BarChart3 size={24} strokeWidth={2.25} />
+              Four project model choices
+            </p>
+            <h1 id="intro-title">Predict restaurant location success.</h1>
+            <p>
+              Use the project models to compare expected Yelp rating and success classification for Metro Vancouver
+              restaurant locations.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="predictor-shell" id="predict" aria-labelledby="hero-title">
         <header className="simple-topbar">
           <a className="brand" href="#predict" aria-label="CMPT 310 LocationAI home">
